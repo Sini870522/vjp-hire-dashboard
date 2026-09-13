@@ -238,7 +238,7 @@ async function decryptToken(encrypted, password) {
 // Try to fetch encrypted token from GitHub (public repo - no auth needed)
 async function fetchEncryptedToken() {
   try {
-    const url = 'https://raw.githubusercontent.com/Sini870522/vjp-dashboard/main/' + GH_TOKEN_FILE + '?t=' + Date.now();
+    const url = 'https://raw.githubusercontent.com/Sini870522/vjp-hire-dashboard/main/' + GH_TOKEN_FILE + '?t=' + Date.now();
     const res = await fetch(url);
     if (!res.ok) return null;
     return await res.text();
@@ -247,7 +247,7 @@ async function fetchEncryptedToken() {
 
 // Save encrypted token to public repo (needs a token with write access to public repo)
 async function saveEncryptedToken(encryptedData, writeToken) {
-  const url = 'https://api.github.com/repos/Sini870522/vjp-dashboard/contents/' + GH_TOKEN_FILE;
+  const url = 'https://api.github.com/repos/Sini870522/vjp-hire-dashboard/contents/' + GH_TOKEN_FILE;
   // Check if file exists to get SHA
   let sha = '';
   try {
