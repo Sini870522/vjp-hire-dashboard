@@ -105,8 +105,7 @@ tr:last-child td{border-bottom:none}
 .add-btn:hover{background:#584a3e;transform:translateY(-1px);box-shadow:0 4px 12px rgba(107,92,79,.2)}
 .clickable{cursor:pointer;color:var(--accent);font-weight:500}
 .clickable:hover{text-decoration:underline}
-.biz-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-@media(max-width:1100px){.biz-columns{grid-template-columns:1fr}}
+.biz-columns{display:flex;flex-direction:column;gap:24px}
 .biz-block{background:var(--card);border-radius:12px;padding:20px;box-shadow:var(--shadow);overflow-x:auto}
 .biz-block-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
 .biz-block-header h2{font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--text)}
@@ -712,15 +711,15 @@ function renderPositions() {
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
   function renderBizTable(deptList) {
     if(!deptList.length) return '<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
-    var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th></th></tr></thead><tbody>';
+    var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
     deptList.forEach(function(dept){
       var items = deptMap[dept];
       var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
-      h += '<tr class="dept-divider"><td colspan="5"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
+      h += '<tr class="dept-divider"><td colspan="9"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
       items.forEach(function(p){
         var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
         var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
-        h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+        h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td>'+esc(p.headcount||'—')+'</td><td title="'+esc(p.channels||'')+'">'+esc((p.channels||'—').substring(0,15))+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,20))+((p.memo||'').length>20?'...':'')+'</td><td>'+(p.updatedAt||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
       });
     });
     h += '</tbody></table>';
