@@ -97,6 +97,16 @@ tr:last-child td{border-bottom:none}
 .add-btn:hover{background:#005bb5}
 .clickable{cursor:pointer;color:var(--accent)}
 .clickable:hover{text-decoration:underline}
+.dept-group{margin-bottom:20px}
+.dept-group-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 0}
+.dept-group-header h3{font-size:14px;font-weight:700;color:var(--text)}
+.dept-group-header .dept-count{background:var(--accent);color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:600}
+.dept-group-header .dept-open{background:var(--open);color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:600}
+.jd-content{background:#f8f8fa;border-radius:8px;padding:16px;font-size:13px;line-height:1.8;white-space:pre-wrap;border-left:3px solid var(--accent)}
+.resume-upload{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:.2s;background:#fafafa}
+.resume-upload:hover{border-color:var(--accent);background:#f0f5ff}
+.resume-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#f0f5ff;border-radius:6px;font-size:13px;color:var(--accent);text-decoration:none}
+.resume-link:hover{background:#e0ecff}
 .toast{position:fixed;bottom:20px;right:20px;background:#1d1d1f;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:200;display:none;animation:fadeIn .3s}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 /* Setup dialog */
@@ -408,7 +418,7 @@ const DEFAULT_DATA = {positions:[],candidates:[],weekly:{},nextPosId:100,nextCan
 // ===== STATE =====
 let STATE = null;
 let currentTab = 'positions';
-let posFilter = {status:'all',priority:'all',search:''};
+let posFilter = {status:'all',priority:'all',dept:'all',search:''};
 let candFilter = {dateRange:'all',search:'',position:'all'};
 let funnelWeekOffset = 0;
 let funnelEditing = false;
@@ -651,26 +661,48 @@ function renderPositions() {
   var filtered = STATE.positions.filter(function(p) {
     if (posFilter.status !== 'all' && p.status !== posFilter.status) return false;
     if (posFilter.priority !== 'all' && p.priority !== posFilter.priority) return false;
-    if (posFilter.search && !p.name.toLowerCase().includes(posFilter.search.toLowerCase())) return false;
+    if (posFilter.dept && posFilter.dept !== 'all' && (p.dept||'未分類') !== posFilter.dept) return false;
+    if (posFilter.search && !p.name.toLowerCase().includes(posFilter.search.toLowerCase()) && !(p.dept||'').toLowerCase().includes(posFilter.search.toLowerCase())) return false;
     return true;
   });
   var priOrder = {HIGH:0,MID:1,LOW:2};
   var statusOrder = {OPEN:0,'確認中':1,'未掲載':2,CLOSE:3};
   filtered.sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
   var statuses = []; STATE.positions.forEach(function(p){if(p.status && !statuses.includes(p.status)) statuses.push(p.status);}); statuses.sort();
+  // Group by department
+  var deptOrder = [];
+  var deptMap = {};
+  filtered.forEach(function(p){
+    var d = p.dept || '未分類';
+    if (!deptMap[d]) { deptMap[d] = []; deptOrder.push(d); }
+    deptMap[d].push(p);
+  });
+  var depts = []; STATE.positions.forEach(function(p){if(p.dept && !depts.includes(p.dept)) depts.push(p.dept);}); depts.sort();
   var html = '<div class="filter-bar"><label>ステータス:</label><select onchange="posFilter.status=this.value;render()"><option value="all">全て</option>';
   statuses.forEach(function(s){html+='<option value="'+esc(s)+'" '+(posFilter.status===s?'selected':'')+'>'+esc(s)+'</option>';});
   html += '</select><label>優先度:</label><select onchange="posFilter.priority=this.value;render()"><option value="all">全て</option>';
   ['HIGH','MID','LOW'].forEach(function(s){html+='<option value="'+s+'" '+(posFilter.priority===s?'selected':'')+'>'+s+'</option>';});
+  html += '</select><label>部門:</label><select onchange="posFilter.dept=this.value;render()"><option value="all">全て</option>';
+  depts.forEach(function(d){html+='<option value="'+esc(d)+'" '+((posFilter.dept||'all')===d?'selected':'')+'>'+esc(d)+'</option>';});
   html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
-  html += '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>部門</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
-  if (!filtered.length) html += '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--sub)">該当なし</td></tr>';
-  filtered.forEach(function(p){
-    var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
-    var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
-    html+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.dept||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td>'+esc(p.headcount||'—')+'</td><td title="'+esc(p.channels||'')+'">'+esc((p.channels||'—').substring(0,20))+((p.channels||'').length>20?'...':'')+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,25))+((p.memo||'').length>25?'...':'')+'</td><td>'+(p.updatedAt||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+  if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
+  deptOrder.forEach(function(dept){
+    var items = deptMap[dept];
+    if (posFilter.dept && posFilter.dept !== 'all' && dept !== posFilter.dept && dept !== '未分類') return;
+    if (posFilter.dept && posFilter.dept !== 'all' && dept === '未分類') {
+      items = items.filter(function(p){ return !p.dept || p.dept === posFilter.dept; });
+      if (!items.length) return;
+    }
+    var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
+    html += '<div class="dept-group"><div class="dept-group-header"><h3>'+esc(dept)+'</h3><span class="dept-count">'+items.length+'件</span>'+(openCount?'<span class="dept-open">'+openCount+' OPEN</span>':'')+'</div>';
+    html += '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
+    items.forEach(function(p){
+      var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
+      var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
+      html+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td>'+esc(p.headcount||'—')+'</td><td title="'+esc(p.channels||'')+'">'+esc((p.channels||'—').substring(0,20))+((p.channels||'').length>20?'...':'')+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,25))+((p.memo||'').length>25?'...':'')+'</td><td>'+(p.updatedAt||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
   });
-  html += '</tbody></table>';
   document.getElementById('content').innerHTML = html;
 }
 
@@ -688,7 +720,7 @@ function renderCandidates() {
     return true;
   });
   var positions = []; STATE.candidates.forEach(function(c){if(c.position && !positions.includes(c.position)) positions.push(c.position);}); positions.sort();
-  var columns = [{key:'選考中',statuses:['書類選考','一次面接','二次面接']},{key:'内定・入社',statuses:['内定承諾','已入社']},{key:'見送り・辞退',statuses:['見送り','辞退','✕見送り']}];
+  var columns = [{key:'選考中',statuses:['書類選考','一次面接','二次面接']},{key:'内定・入社',statuses:['内定承諾','已入社']},{key:'見送り・辞退',statuses:['見送り','辞退']}];
   var html = '<div class="filter-bar"><label>期間:</label>';
   [{k:'all',l:'全期間'},{k:'m1',l:'1ヶ月'},{k:'m3',l:'3ヶ月'},{k:'m6',l:'半年'}].forEach(function(f){
     html+='<button class="btn '+(candFilter.dateRange===f.k?'active':'')+'" onclick="candFilter.dateRange=\''+f.k+'\';render()">'+f.l+'</button>';
@@ -698,9 +730,14 @@ function renderCandidates() {
   html += '</select><input type="text" placeholder="名前/ポジション検索..." value="'+esc(candFilter.search)+'" oninput="candFilter.search=this.value;render()" style="flex:1;max-width:200px"><button class="add-btn" onclick="showAddCandidate()">＋ 新規候補者</button></div><div class="kanban">';
   columns.forEach(function(col){
     var items = filtered.filter(function(c){
-      if (col.key==='選考中') return !['内定承諾','已入社','見送り','辞退'].includes(c.status) && c.status;
+      var isRejected = (c.judgment||'').includes('見送り') || c.status==='見送り' || c.status==='辞退';
+      if (col.key==='見送り・辞退') return isRejected;
+      if (col.key==='内定・入社') return !isRejected && col.statuses.includes(c.status);
+      if (col.key==='選考中') return !isRejected && !['内定承諾','已入社'].includes(c.status) && c.status;
       return col.statuses.includes(c.status);
     });
+    // Sort newest first
+    items.sort(function(a,b){ return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
     html+='<div class="kanban-col"><h3>'+col.key+' <span class="cnt">'+items.length+'</span></h3>';
     if (!items.length) html+='<div style="text-align:center;color:var(--sub);font-size:12px;padding:20px">なし</div>';
     items.forEach(function(c){
@@ -784,6 +821,8 @@ function showPositionDetail(id) {
   var h = '<h2>'+esc(p.name)+' <button class="close-btn" onclick="closeModal()">✕</button></h2><div class="detail-grid">';
   [{l:'ステータス',v:p.status},{l:'優先度',v:p.priority},{l:'部門',v:p.dept},{l:'年収',v:p.salary},{l:'人数',v:p.headcount},{l:'国籍',v:p.nationality},{l:'勤務地',v:p.base},{l:'チャネル',v:p.channels}].forEach(function(x){h+='<div class="detail-item"><div class="di-label">'+x.l+'</div><div class="di-value">'+esc(x.v||'—')+'</div></div>';});
   h += '</div>';
+  if(p.jd) h+='<div class="detail-section"><h4>職務内容（JD）</h4><div class="jd-content">'+esc(p.jd)+'</div></div>';
+  if(p.requirements) h+='<div class="detail-section"><h4>応募要件</h4><div class="jd-content">'+esc(p.requirements)+'</div></div>';
   if(p.jobLink) h+='<div class="detail-section"><h4>求人リンク</h4><p><a href="'+esc(p.jobLink)+'" target="_blank">'+esc(p.jobLink)+'</a></p></div>';
   if(p.memo) h+='<div class="detail-section"><h4>メモ</h4><p>'+esc(p.memo)+'</p></div>';
   if(cands.length) {h+='<div class="detail-section"><h4>候補者 ('+cands.length+'名)</h4>';cands.forEach(function(c){h+='<div style="padding:4px 0;font-size:13px"><span class="clickable" onclick="closeModal();setTimeout(function(){showCandidateDetail(\''+c.id+'\')},200)">'+esc(c.name)+'</span> — '+esc(c.status||'')+' '+esc(c.judgment||'')+'</div>';});h+='</div>';}
@@ -796,6 +835,7 @@ function showCandidateDetail(id) {
   var h = '<h2>'+esc(c.name)+' <button class="close-btn" onclick="closeModal()">✕</button></h2><div class="detail-grid">';
   [{l:'応募ポジション',v:c.position},{l:'ステータス',v:c.status},{l:'判定',v:c.judgment},{l:'年齢',v:c.age},{l:'日本語',v:c.japanese},{l:'英語',v:c.english},{l:'現居地',v:c.location},{l:'年収',v:c.salary},{l:'登録日',v:c.createdAt}].forEach(function(x){h+='<div class="detail-item"><div class="di-label">'+x.l+'</div><div class="di-value">'+esc(x.v||'—')+'</div></div>';});
   h+='</div>';
+  if(c.resumeName) h+='<div class="detail-section"><h4>履歴書</h4><p><a class="resume-link" href="'+(c.resumeData||'#')+'" download="'+esc(c.resumeName)+'" style="text-decoration:none">📄 '+esc(c.resumeName)+' — クリックでダウンロード</a></p></div>';
   if(c.coreExp) h+='<div class="detail-section"><h4>核心経験</h4><p>'+esc(c.coreExp)+'</p></div>';
   if(c.interviewEval) h+='<div class="detail-section"><h4>面接評価</h4><p>'+esc(c.interviewEval)+'</p></div>';
   if(c.coreRisk) h+='<div class="detail-section"><h4>核心リスク</h4><p>'+esc(c.coreRisk)+'</p></div>';
@@ -806,36 +846,82 @@ function showCandidateDetail(id) {
 
 function showEditPosition(id) {
   var p = STATE.positions.find(function(x){return x.id===id;}); if(!p) return;
-  openModal('<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')"><div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept" value="'+esc(p.dept||'')+'"></div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div><div class="field"><label>国籍</label><input name="nationality" value="'+esc(p.nationality||'')+'"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base" value="'+esc(p.base||'')+'"></div><div class="field"><label>チャネル</label><input name="channels" value="'+esc(p.channels||'')+'"></div></div><div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div><div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>');
+  openModal('<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')"><div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept" value="'+esc(p.dept||'')+'"></div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div><div class="field"><label>国籍</label><input name="nationality" value="'+esc(p.nationality||'')+'"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base" value="'+esc(p.base||'')+'"></div><div class="field"><label>チャネル</label><input name="channels" value="'+esc(p.channels||'')+'"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入...">'+esc(p.jd||'')+'</textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など...">'+esc(p.requirements||'')+'</textarea></div><div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div><div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>');
 }
 
 function showAddPosition() {
-  openModal('<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)"><div class="field"><label>ポジション名</label><input name="name" required></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept"></div><div class="field"><label>年収</label><input name="salary"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount"></div><div class="field"><label>国籍</label><input name="nationality"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base"></div><div class="field"><label>チャネル</label><input name="channels"></div></div><div class="field"><label>求人リンク</label><input name="jobLink"></div><div class="field"><label>メモ</label><textarea name="memo"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
+  openModal('<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)"><div class="field"><label>ポジション名</label><input name="name" required></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept"></div><div class="field"><label>年収</label><input name="salary"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount"></div><div class="field"><label>国籍</label><input name="nationality"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base"></div><div class="field"><label>チャネル</label><input name="channels"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入..."></textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など..."></textarea></div><div class="field"><label>求人リンク</label><input name="jobLink"></div><div class="field"><label>メモ</label><textarea name="memo"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
 }
 
 function showEditCandidate(id) {
   var c = STATE.candidates.find(function(x){return x.id===id;}); if(!c) return;
   var ss = ['書類選考','一次面接','二次面接','内定承諾','已入社','見送り','辞退'];
   var js = ['⭐採用推薦','○選考継続','△保留','✕見送り'];
-  openModal('<h2>候補者編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="saveCandidate(event,\''+c.id+'\')"><div class="row"><div class="field"><label>候補者名</label><input name="name" value="'+esc(c.name||'')+'"></div><div class="field"><label>応募ポジション</label><input name="position" value="'+esc(c.position||'')+'"></div></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+ss.map(function(s){return '<option '+(c.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>判定</label><select name="judgment">'+js.map(function(j){return '<option '+(c.judgment===j?'selected':'')+'>'+j+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>年齢</label><input name="age" type="number" value="'+(c.age||'')+'"></div><div class="field"><label>現居地</label><input name="location" value="'+esc(c.location||'')+'"></div></div><div class="row"><div class="field"><label>日本語</label><input name="japanese" value="'+esc(c.japanese||'')+'"></div><div class="field"><label>英語</label><input name="english" value="'+esc(c.english||'')+'"></div></div><div class="field"><label>年収</label><input name="salary" value="'+esc(c.salary||'')+'"></div><div class="field"><label>核心経験</label><textarea name="coreExp">'+esc(c.coreExp||'')+'</textarea></div><div class="field"><label>面接評価</label><textarea name="interviewEval">'+esc(c.interviewEval||'')+'</textarea></div><div class="field"><label>核心リスク</label><textarea name="coreRisk">'+esc(c.coreRisk||'')+'</textarea></div><div class="field"><label>判定理由</label><textarea name="reason">'+esc(c.reason||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deleteCandidate(\''+c.id+'\')">削除</button></div></form>');
+  openModal('<h2>候補者編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="saveCandidate(event,\''+c.id+'\')"><div class="row"><div class="field"><label>候補者名</label><input name="name" value="'+esc(c.name||'')+'"></div><div class="field"><label>応募ポジション</label>'+positionSelectHtml(c.position)+'</div></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+ss.map(function(s){return '<option '+(c.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>判定</label><select name="judgment">'+js.map(function(j){return '<option '+(c.judgment===j?'selected':'')+'>'+j+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>年齢</label><input name="age" type="number" value="'+(c.age||'')+'"></div><div class="field"><label>現居地</label><input name="location" value="'+esc(c.location||'')+'"></div></div><div class="row"><div class="field"><label>日本語</label><input name="japanese" value="'+esc(c.japanese||'')+'"></div><div class="field"><label>英語</label><input name="english" value="'+esc(c.english||'')+'"></div></div><div class="field"><label>年収</label><input name="salary" value="'+esc(c.salary||'')+'"></div>'+resumeFieldHtml(c.resumeData,c.resumeName)+'<div class="field"><label>核心経験</label><textarea name="coreExp">'+esc(c.coreExp||'')+'</textarea></div><div class="field"><label>面接評価</label><textarea name="interviewEval">'+esc(c.interviewEval||'')+'</textarea></div><div class="field"><label>核心リスク</label><textarea name="coreRisk">'+esc(c.coreRisk||'')+'</textarea></div><div class="field"><label>判定理由</label><textarea name="reason">'+esc(c.reason||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deleteCandidate(\''+c.id+'\')">削除</button></div></form>');
 }
 
 function showAddCandidate() {
   var ss = ['書類選考','一次面接','二次面接','内定承諾','已入社','見送り','辞退'];
   var js = ['⭐採用推薦','○選考継続','△保留','✕見送り'];
-  openModal('<h2>新規候補者 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addCandidate(event)"><div class="row"><div class="field"><label>候補者名</label><input name="name" required></div><div class="field"><label>応募ポジション</label><input name="position"></div></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+ss.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>判定</label><select name="judgment">'+js.map(function(j){return '<option>'+j+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>年齢</label><input name="age" type="number"></div><div class="field"><label>現居地</label><input name="location"></div></div><div class="row"><div class="field"><label>日本語</label><input name="japanese"></div><div class="field"><label>英語</label><input name="english"></div></div><div class="field"><label>年収</label><input name="salary"></div><div class="field"><label>核心経験</label><textarea name="coreExp"></textarea></div><div class="field"><label>面接評価</label><textarea name="interviewEval"></textarea></div><div class="field"><label>核心リスク</label><textarea name="coreRisk"></textarea></div><div class="field"><label>判定理由</label><textarea name="reason"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
+  openModal('<h2>新規候補者 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addCandidate(event)"><div class="row"><div class="field"><label>候補者名</label><input name="name" required></div><div class="field"><label>応募ポジション</label>'+positionSelectHtml('')+'</div></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+ss.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>判定</label><select name="judgment">'+js.map(function(j){return '<option>'+j+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>年齢</label><input name="age" type="number"></div><div class="field"><label>現居地</label><input name="location"></div></div><div class="row"><div class="field"><label>日本語</label><input name="japanese"></div><div class="field"><label>英語</label><input name="english"></div></div><div class="field"><label>年収</label><input name="salary"></div>'+resumeFieldHtml('','')+'<div class="field"><label>核心経験</label><textarea name="coreExp"></textarea></div><div class="field"><label>面接評価</label><textarea name="interviewEval"></textarea></div><div class="field"><label>核心リスク</label><textarea name="coreRisk"></textarea></div><div class="field"><label>判定理由</label><textarea name="reason"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
+}
+
+// ===== HELPERS =====
+function positionSelectHtml(selected) {
+  var opts = '<option value="">-- 選択 --</option>';
+  var openPos = STATE.positions.filter(function(p){return p.status!=='CLOSE'}).sort(function(a,b){return (a.dept||'').localeCompare(b.dept||'');});
+  var closedPos = STATE.positions.filter(function(p){return p.status==='CLOSE'});
+  if (openPos.length) {
+    opts += '<optgroup label="募集中">';
+    openPos.forEach(function(p){opts+='<option value="'+esc(p.name)+'" '+(selected===p.name?'selected':'')+'>'+esc(p.name)+(p.dept?' ('+esc(p.dept)+')':'')+'</option>';});
+    opts += '</optgroup>';
+  }
+  if (closedPos.length) {
+    opts += '<optgroup label="クローズ">';
+    closedPos.forEach(function(p){opts+='<option value="'+esc(p.name)+'" '+(selected===p.name?'selected':'')+'>'+esc(p.name)+'</option>';});
+    opts += '</optgroup>';
+  }
+  return '<select name="position">'+opts+'</select>';
+}
+
+function handleResumeUpload(inputEl) {
+  var file = inputEl.files[0]; if (!file) return;
+  if (file.size > 5*1024*1024) { alert('ファイルサイズは5MB以下にしてください'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var container = inputEl.closest('.field');
+    container.querySelector('.resume-data').value = e.target.result;
+    container.querySelector('.resume-name-val').value = file.name;
+    var preview = container.querySelector('.resume-preview');
+    preview.innerHTML = '<span class="resume-link">📄 '+esc(file.name)+' <span style="color:var(--sub);font-size:11px">'+(file.size/1024).toFixed(0)+'KB</span></span>';
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function resumeFieldHtml(resumeData, resumeName) {
+  var hasResume = resumeData && resumeName;
+  return '<div class="field"><label>履歴書・職務経歴書</label>'+
+    '<input type="hidden" class="resume-data" name="resumeData" value="'+(resumeData?'HAS_DATA':'')+'">'+
+    '<input type="hidden" class="resume-name-val" name="resumeName" value="'+esc(resumeName||'')+'">'+
+    '<div class="resume-preview" style="display:'+(hasResume?'block':'none')+';margin-bottom:8px">'+(hasResume?'<span class="resume-link">📄 '+esc(resumeName)+'</span>':'')+'</div>'+
+    '<div class="resume-upload" onclick="this.querySelector(\'input\').click()">'+
+    '<input type="file" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleResumeUpload(this)">'+
+    '<div style="color:var(--sub);font-size:13px">'+(hasResume?'📎 ファイルを変更':'📎 ファイルをアップロード')+'</div>'+
+    '<div style="color:#c7c7cc;font-size:11px;margin-top:4px">PDF, Word, テキスト（5MB以下）</div>'+
+    '</div></div>';
 }
 
 // ===== CRUD =====
 async function savePosition(e, id) {
   e.preventDefault(); var f=e.target;
   var p = STATE.positions.find(function(x){return x.id===id;}); if(!p) return;
-  p.name=f.name.value;p.status=f.status.value;p.priority=f.priority.value;p.dept=f.dept.value;p.salary=f.salary.value;p.headcount=f.headcount.value;p.nationality=f.nationality.value;p.base=f.base.value;p.channels=f.channels.value;p.jobLink=f.jobLink.value;p.memo=f.memo.value;p.updatedAt=new Date().toISOString().split('T')[0];
+  p.name=f.name.value;p.status=f.status.value;p.priority=f.priority.value;p.dept=f.dept.value;p.salary=f.salary.value;p.headcount=f.headcount.value;p.nationality=f.nationality.value;p.base=f.base.value;p.channels=f.channels.value;p.jd=f.jd.value;p.requirements=f.requirements.value;p.jobLink=f.jobLink.value;p.memo=f.memo.value;p.updatedAt=new Date().toISOString().split('T')[0];
   closeModal(); await saveAndSync(); showToast('ポジション更新しました');
 }
 async function addPosition(e) {
   e.preventDefault(); var f=e.target;
-  STATE.positions.push({id:'p'+(STATE.nextPosId++),name:f.name.value,status:f.status.value,priority:f.priority.value,dept:f.dept.value,salary:f.salary.value,headcount:f.headcount.value,nationality:f.nationality.value,base:f.base.value,channels:f.channels.value,jobLink:f.jobLink.value,memo:f.memo.value,updatedAt:new Date().toISOString().split('T')[0]});
+  STATE.positions.push({id:'p'+(STATE.nextPosId++),name:f.name.value,status:f.status.value,priority:f.priority.value,dept:f.dept.value,salary:f.salary.value,headcount:f.headcount.value,nationality:f.nationality.value,base:f.base.value,channels:f.channels.value,jd:f.jd.value,requirements:f.requirements.value,jobLink:f.jobLink.value,memo:f.memo.value,updatedAt:new Date().toISOString().split('T')[0]});
   closeModal(); await saveAndSync(); showToast('ポジション追加しました');
 }
 async function deletePosition(id) {
@@ -846,12 +932,16 @@ async function deletePosition(id) {
 async function saveCandidate(e, id) {
   e.preventDefault(); var f=e.target;
   var c = STATE.candidates.find(function(x){return x.id===id;}); if(!c) return;
-  c.name=f.name.value;c.position=f.position.value;c.status=f.status.value;c.judgment=f.judgment.value;c.age=f.age.value?parseInt(f.age.value):null;c.location=f.location.value;c.japanese=f.japanese.value;c.english=f.english.value;c.salary=f.salary.value;c.coreExp=f.coreExp.value;c.interviewEval=f.interviewEval.value;c.coreRisk=f.coreRisk.value;c.reason=f.reason.value;
+  c.name=f.name.value;c.position=f.position.value;c.status=f.status.value;c.judgment=f.judgment.value;c.age=f.age.value?parseInt(f.age.value):null;c.location=f.location.value;c.japanese=f.japanese.value;c.english=f.english.value;c.salary=f.salary.value;
+  var rd=f.resumeData.value; if(rd&&rd!=='HAS_DATA'){c.resumeData=rd;c.resumeName=f.resumeName.value;} else if(!rd){c.resumeData='';c.resumeName='';}
+  c.coreExp=f.coreExp.value;c.interviewEval=f.interviewEval.value;c.coreRisk=f.coreRisk.value;c.reason=f.reason.value;
   closeModal(); await saveAndSync(); showToast('候補者更新しました');
 }
 async function addCandidate(e) {
   e.preventDefault(); var f=e.target;
-  STATE.candidates.push({id:'c'+(STATE.nextCandId++),name:f.name.value,position:f.position.value,status:f.status.value,judgment:f.judgment.value,age:f.age.value?parseInt(f.age.value):null,location:f.location.value,japanese:f.japanese.value,english:f.english.value,salary:f.salary.value,coreExp:f.coreExp.value,interviewEval:f.interviewEval.value,coreRisk:f.coreRisk.value,reason:f.reason.value,createdAt:new Date().toISOString().split('T')[0]});
+  var newCand = {id:'c'+(STATE.nextCandId++),name:f.name.value,position:f.position.value,status:f.status.value,judgment:f.judgment.value,age:f.age.value?parseInt(f.age.value):null,location:f.location.value,japanese:f.japanese.value,english:f.english.value,salary:f.salary.value,coreExp:f.coreExp.value,interviewEval:f.interviewEval.value,coreRisk:f.coreRisk.value,reason:f.reason.value,createdAt:new Date().toISOString().split('T')[0]};
+  var rd=f.resumeData.value; if(rd&&rd!=='HAS_DATA'){newCand.resumeData=rd;newCand.resumeName=f.resumeName.value;}
+  STATE.candidates.push(newCand);
   closeModal(); await saveAndSync(); showToast('候補者追加しました');
 }
 async function deleteCandidate(id) {
