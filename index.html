@@ -107,7 +107,7 @@ tr:last-child td{border-bottom:none}
 .clickable:hover{text-decoration:underline}
 .biz-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 @media(max-width:1100px){.biz-columns{grid-template-columns:1fr}}
-.biz-block{background:var(--card);border-radius:12px;padding:20px;box-shadow:var(--shadow)}
+.biz-block{background:var(--card);border-radius:12px;padding:20px;box-shadow:var(--shadow);overflow-x:auto}
 .biz-block-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
 .biz-block-header h2{font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--text)}
 .biz-block-header .biz-count{background:var(--accent-light);color:var(--accent);font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600}
@@ -706,7 +706,7 @@ function renderPositions() {
   html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
   if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
   // Business division mapping
-  var RETAIL_DEPTS = ['Operation','店舗運営','新店拓展','Retail','Store'];
+  var RETAIL_DEPTS = ['Operation','店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺','运营','運営'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
   function renderDeptTable(items, dept) {
     var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
