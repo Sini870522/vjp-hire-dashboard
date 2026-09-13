@@ -4,154 +4,167 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VJP 採用ダッシュボード</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#f5f5f7;--card:#fff;--border:#e5e5ea;--text:#1d1d1f;--sub:#86868b;--accent:#0071e3;--open:#34c759;--close:#ff3b30;--hold:#ff9500;--high:#ff3b30;--mid:#ff9500;--low:#86868b;--hire:#34c759;--reject:#ff3b30;--shadow:0 1px 3px rgba(0,0,0,.08)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-.header{background:#1d1d1f;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-.header h1{font-size:18px;font-weight:600;letter-spacing:.5px}
-.header .meta{font-size:12px;color:#a1a1a6}
-.header .actions{display:flex;gap:8px;align-items:center}
-.header .actions button{background:rgba(255,255,255,.15);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer}
-.header .actions button:hover{background:rgba(255,255,255,.25)}
-.sync-status{font-size:11px;padding:3px 10px;border-radius:10px;display:inline-block}
-.sync-ok{background:#34c759;color:#fff}
-.sync-saving{background:#ff9500;color:#fff}
-.sync-err{background:#ff3b30;color:#fff}
-.sync-offline{background:#86868b;color:#fff}
-.stats{display:flex;gap:12px;padding:16px 24px;background:#fff;border-bottom:1px solid var(--border)}
-.stat{text-align:center;padding:8px 16px;min-width:100px}
-.stat .num{font-size:24px;font-weight:700}
-.stat .lbl{font-size:11px;color:var(--sub);margin-top:2px}
-.tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--border);padding:0 24px}
-.tab{padding:12px 20px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--sub);transition:.2s}
+:root{--bg:#f7f8fa;--card:#fff;--border:#e8eaed;--text:#1a1a2e;--sub:#8b8fa3;--accent:#4f6ef7;--accent-light:#eef1fe;--open:#22c55e;--close:#ef4444;--hold:#f59e0b;--high:#ef4444;--mid:#f59e0b;--low:#94a3b8;--hire:#22c55e;--reject:#ef4444;--shadow:0 1px 4px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.03);--shadow-md:0 4px 16px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.03);--radius:10px;--font:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13.5px;line-height:1.6;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#2d2b55 100%);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:17px;font-weight:600;letter-spacing:.8px}
+.header .meta{font-size:11.5px;color:rgba(255,255,255,.5);letter-spacing:.3px;margin-top:2px}
+.header .actions{display:flex;gap:6px;align-items:center}
+.header .actions button{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.12);padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--font);letter-spacing:.3px;transition:all .2s}
+.header .actions button:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25)}
+.sync-status{font-size:11px;padding:4px 12px;border-radius:20px;display:inline-block;font-weight:500;letter-spacing:.3px}
+.sync-ok{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+.sync-saving{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+.sync-err{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.sync-offline{background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.2)}
+.stats{display:flex;gap:6px;padding:18px 28px;background:#fff;border-bottom:1px solid var(--border)}
+.stat{text-align:center;padding:10px 20px;min-width:100px;border-radius:10px;transition:.2s}
+.stat:hover{background:var(--bg)}
+.stat .num{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.stat .lbl{font-size:11px;color:var(--sub);margin-top:3px;letter-spacing:.5px;text-transform:uppercase;font-weight:500}
+.tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--border);padding:0 28px}
+.tab{padding:14px 22px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2.5px solid transparent;color:var(--sub);transition:all .2s;letter-spacing:.3px}
 .tab:hover{color:var(--text)}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.content{padding:20px 24px;max-width:1400px;margin:0 auto}
-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-thead{background:#fafafa}
-th{padding:10px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-tr:hover{background:#f8f8fa}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.content{padding:24px 28px;max-width:1440px;margin:0 auto}
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+thead{background:#f8f9fb}
+th{padding:11px 14px;text-align:left;font-size:11.5px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.5px;text-transform:uppercase}
+td{padding:12px 14px;border-bottom:1px solid #f3f4f6;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151}
+tr:hover{background:#f9fafb}
 tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
-.badge-open{background:#e8f8ec;color:#1b7a2e}
-.badge-close{background:#fce8e8;color:#c41e1e}
-.badge-hold{background:#fff3e0;color:#b56a00}
-.badge-unpub{background:#f0f0f5;color:#666}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.badge-open{background:#dcfce7;color:#15803d}
+.badge-close{background:#fee2e2;color:#b91c1c}
+.badge-hold{background:#fef3c7;color:#a16207}
+.badge-unpub{background:#f1f5f9;color:#64748b}
 .pri-high{color:var(--high);font-weight:700}
 .pri-mid{color:var(--mid);font-weight:600}
 .pri-low{color:var(--low)}
-.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.filter-bar label{font-size:12px;color:var(--sub);margin-right:4px}
-.filter-bar select,.filter-bar input{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:#fff}
-.filter-bar .btn{padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:#fff}
+.filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filter-bar label{font-size:12px;color:var(--sub);margin-right:2px;font-weight:500;letter-spacing:.3px}
+.filter-bar select,.filter-bar input{padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;background:#fff;font-family:var(--font);color:var(--text);transition:border .2s}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-light)}
+.filter-bar .btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;background:#fff;font-family:var(--font);transition:all .2s;font-weight:500}
 .filter-bar .btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.filter-bar .btn:hover{border-color:var(--accent)}
-.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
-.kanban-col{min-width:220px;max-width:280px;flex:1;background:#f0f0f5;border-radius:10px;padding:12px}
-.kanban-col h3{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:10px;display:flex;justify-content:space-between}
-.kanban-col h3 .cnt{background:var(--accent);color:#fff;border-radius:10px;padding:0 8px;font-size:11px}
-.cand-card{background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:.2s}
-.cand-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.cand-card .name{font-weight:600;font-size:13px}
-.cand-card .pos{font-size:11px;color:var(--sub);margin-top:2px}
-.cand-card .date{font-size:10px;color:var(--sub);margin-top:4px}
-.cand-card.stale{opacity:.55}
+.filter-bar .btn:hover{border-color:var(--accent);color:var(--accent)}
+.filter-bar .btn.active:hover{color:#fff}
+.kanban{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px}
+.kanban-col{min-width:240px;max-width:300px;flex:1;background:#f1f3f8;border-radius:12px;padding:14px}
+.kanban-col h3{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:12px;display:flex;justify-content:space-between;letter-spacing:.5px;text-transform:uppercase}
+.kanban-col h3 .cnt{background:var(--accent);color:#fff;border-radius:12px;padding:1px 9px;font-size:11px;font-weight:600}
+.cand-card{background:var(--card);border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;border:1px solid transparent}
+.cand-card:hover{box-shadow:var(--shadow-md);border-color:var(--accent);transform:translateY(-1px)}
+.cand-card .name{font-weight:600;font-size:13.5px;color:var(--text)}
+.cand-card .pos{font-size:11.5px;color:var(--sub);margin-top:3px;letter-spacing:.2px}
+.cand-card .date{font-size:10.5px;color:var(--sub);margin-top:5px}
+.cand-card.stale{opacity:.5}
 .cand-card.stale .date{color:var(--close)}
-.cand-card .judgment{font-size:11px;margin-top:4px}
-.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:center}
+.cand-card .judgment{font-size:11px;margin-top:5px}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,15,30,.5);backdrop-filter:blur(4px);z-index:100;justify-content:center;align-items:center}
 .modal-overlay.show{display:flex}
-.modal{background:#fff;border-radius:14px;max-width:700px;width:90%;max-height:85vh;overflow-y:auto;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
-.modal h2{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
-.modal .close-btn{background:none;border:none;font-size:22px;cursor:pointer;color:var(--sub);padding:4px 8px}
-.modal .field{margin-bottom:12px}
-.modal .field label{display:block;font-size:11px;font-weight:600;color:var(--sub);margin-bottom:4px}
-.modal .field input,.modal .field select,.modal .field textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit}
-.modal .field textarea{min-height:60px;resize:vertical}
-.modal .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.modal .btn-primary{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
-.modal .btn-primary:hover{background:#005bb5}
-.modal .btn-danger{background:var(--close);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer}
-.modal .btn-secondary{background:#f0f0f5;color:var(--text);border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer}
-.modal .detail-section{margin-bottom:16px}
-.modal .detail-section h4{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px}
-.modal .detail-section p{font-size:13px;line-height:1.6;white-space:pre-wrap}
-.modal .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
-.modal .detail-item{background:#f8f8fa;padding:8px;border-radius:6px}
-.modal .detail-item .di-label{font-size:10px;color:var(--sub);font-weight:600}
-.modal .detail-item .di-value{font-size:13px;margin-top:2px}
-.funnel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
-.funnel-header h3{font-size:15px;font-weight:600}
+.modal{background:#fff;border-radius:16px;max-width:720px;width:92%;max-height:85vh;overflow-y:auto;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;letter-spacing:.2px}
+.modal .close-btn{background:#f1f3f8;border:none;font-size:18px;cursor:pointer;color:var(--sub);padding:6px 10px;border-radius:8px;transition:.2s}
+.modal .close-btn:hover{background:#e2e5eb}
+.modal .field{margin-bottom:14px}
+.modal .field label{display:block;font-size:11.5px;font-weight:600;color:var(--sub);margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase}
+.modal .field input,.modal .field select,.modal .field textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;font-family:var(--font);color:var(--text);transition:border .2s}
+.modal .field input:focus,.modal .field select:focus,.modal .field textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-light)}
+.modal .field textarea{min-height:70px;resize:vertical;line-height:1.7}
+.modal .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal .btn-primary{background:var(--accent);color:#fff;border:none;padding:11px 24px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:var(--font);letter-spacing:.3px;transition:all .2s}
+.modal .btn-primary:hover{background:#3b5de7;transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,110,247,.3)}
+.modal .btn-danger{background:#fef2f2;color:var(--close);border:1px solid #fecaca;padding:9px 18px;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:var(--font);font-weight:500;transition:.2s}
+.modal .btn-danger:hover{background:#fee2e2}
+.modal .btn-secondary{background:#f1f3f8;color:var(--text);border:none;padding:9px 18px;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:var(--font);font-weight:500;transition:.2s}
+.modal .btn-secondary:hover{background:#e2e5eb}
+.modal .detail-section{margin-bottom:18px}
+.modal .detail-section h4{font-size:11.5px;font-weight:600;color:var(--sub);margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+.modal .detail-section p{font-size:13.5px;line-height:1.7;white-space:pre-wrap;color:#374151}
+.modal .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}
+.modal .detail-item{background:#f8f9fb;padding:10px 12px;border-radius:8px}
+.modal .detail-item .di-label{font-size:10.5px;color:var(--sub);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+.modal .detail-item .di-value{font-size:13.5px;margin-top:3px;font-weight:500}
+.funnel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.funnel-header h3{font-size:16px;font-weight:600;letter-spacing:.2px}
 .week-nav{display:flex;align-items:center;gap:8px}
-.week-nav button{background:#f0f0f5;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px}
-.week-nav button:hover{background:#e0e0e5}
+.week-nav button{background:#f1f3f8;border:1px solid var(--border);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--font);transition:.2s}
+.week-nav button:hover{background:#e2e5eb}
 .week-nav .week-label{font-size:13px;font-weight:600;min-width:200px;text-align:center}
-.funnel-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-.funnel-table th{background:#fafafa;padding:8px 10px;font-size:11px;text-align:center;border:1px solid var(--border)}
-.funnel-table td{padding:6px 8px;text-align:center;font-size:12px;border:1px solid #f0f0f0}
-.funnel-table td:first-child{text-align:left;font-weight:500;min-width:140px}
-.funnel-table input[type=number]{width:50px;padding:4px;border:1px solid var(--border);border-radius:4px;text-align:center;font-size:12px}
-.funnel-table .subtotal{font-weight:700;background:#f8f8fa}
-.add-btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
-.add-btn:hover{background:#005bb5}
-.clickable{cursor:pointer;color:var(--accent)}
+.funnel-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.funnel-table th{background:#f8f9fb;padding:10px 12px;font-size:11px;text-align:center;border:1px solid var(--border);letter-spacing:.3px;font-weight:600}
+.funnel-table td{padding:8px 10px;text-align:center;font-size:12.5px;border:1px solid #f3f4f6}
+.funnel-table td:first-child{text-align:left;font-weight:500;min-width:150px}
+.funnel-table input[type=number]{width:52px;padding:5px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-size:12px;font-family:var(--font)}
+.funnel-table .subtotal{font-weight:700;background:#f8f9fb}
+.add-btn{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);letter-spacing:.3px;transition:all .2s}
+.add-btn:hover{background:#3b5de7;transform:translateY(-1px);box-shadow:0 4px 12px rgba(79,110,247,.25)}
+.clickable{cursor:pointer;color:var(--accent);font-weight:500}
 .clickable:hover{text-decoration:underline}
-.dept-group{margin-bottom:20px}
-.dept-group-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 0}
-.dept-group-header h3{font-size:14px;font-weight:700;color:var(--text)}
-.dept-group-header .dept-count{background:var(--accent);color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:600}
-.dept-group-header .dept-open{background:var(--open);color:#fff;font-size:11px;padding:1px 8px;border-radius:10px;font-weight:600}
-.jd-content{background:#f8f8fa;border-radius:8px;padding:16px;font-size:13px;line-height:1.8;white-space:pre-wrap;border-left:3px solid var(--accent)}
-.resume-upload{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:.2s;background:#fafafa}
-.resume-upload:hover{border-color:var(--accent);background:#f0f5ff}
-.resume-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#f0f5ff;border-radius:6px;font-size:13px;color:var(--accent);text-decoration:none}
-.resume-link:hover{background:#e0ecff}
-.toast{position:fixed;bottom:20px;right:20px;background:#1d1d1f;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:200;display:none;animation:fadeIn .3s}
+.dept-group{margin-bottom:24px}
+.dept-group-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:4px 0}
+.dept-group-header h3{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.3px}
+.dept-group-header .dept-count{background:var(--accent-light);color:var(--accent);font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600;letter-spacing:.3px}
+.dept-group-header .dept-open{background:#dcfce7;color:#15803d;font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600;letter-spacing:.3px}
+.jd-content{background:#f8f9fb;border-radius:10px;padding:18px;font-size:13.5px;line-height:1.8;white-space:pre-wrap;border-left:3px solid var(--accent);color:#374151}
+.resume-upload{border:2px dashed #d1d5db;border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;background:#fafbfc}
+.resume-upload:hover{border-color:var(--accent);background:var(--accent-light)}
+.resume-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--accent-light);border-radius:8px;font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;transition:.2s}
+.resume-link:hover{background:#dde3fd}
+.toast{position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#1a1a2e,#2d2b55);color:#fff;padding:14px 24px;border-radius:12px;font-size:13.5px;z-index:200;display:none;animation:fadeIn .3s;box-shadow:0 8px 24px rgba(0,0,0,.15);font-weight:500;letter-spacing:.2px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 /* Setup dialog */
-.setup-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:300;display:flex;justify-content:center;align-items:center}
-.setup-box{background:#fff;border-radius:16px;max-width:520px;width:90%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.setup-box h2{font-size:20px;margin-bottom:8px}
-.setup-box p{font-size:13px;color:var(--sub);margin-bottom:16px;line-height:1.6}
-.setup-box .steps{background:#f8f8fa;border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.8}
+.setup-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,15,30,.6);backdrop-filter:blur(4px);z-index:300;display:flex;justify-content:center;align-items:center}
+.setup-box{background:#fff;border-radius:20px;max-width:520px;width:90%;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.setup-box h2{font-size:20px;margin-bottom:10px;font-weight:700;letter-spacing:.2px}
+.setup-box p{font-size:13.5px;color:var(--sub);margin-bottom:18px;line-height:1.7}
+.setup-box .steps{background:#f8f9fb;border-radius:10px;padding:18px;margin-bottom:18px;font-size:13px;line-height:1.9}
 .setup-box .steps a{color:var(--accent)}
-.setup-box input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px}
-.setup-box button{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.setup-box button:hover{background:#005bb5}
+.setup-box input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:14px;font-family:var(--font);transition:border .2s}
+.setup-box input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-light)}
+.setup-box button{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
+.setup-box button:hover{background:#3b5de7}
 .setup-box .err{color:var(--close);font-size:12px;margin-bottom:8px;display:none}
-.setup-box .skip{text-align:center;margin-top:12px;font-size:12px;color:var(--sub)}
+.setup-box .skip{text-align:center;margin-top:14px;font-size:12.5px;color:var(--sub)}
 .setup-box .skip a{color:var(--accent);cursor:pointer}
-.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);z-index:250;display:flex;justify-content:center;align-items:center;font-size:16px;color:var(--sub)}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(4px);z-index:250;display:flex;justify-content:center;align-items:center;font-size:15px;color:var(--sub);font-weight:500;letter-spacing:.3px}
 @media(max-width:768px){
-  .content{padding:12px}
+  .content{padding:16px}
   .kanban{flex-direction:column}
   .kanban-col{max-width:100%;min-width:100%}
   .modal .row{grid-template-columns:1fr}
   .stats{flex-wrap:wrap}
-  .header{padding:12px 16px}
+  .header{padding:14px 18px}
 }
 
 /* Login screen */
-.login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1d1d1f 0%,#2d2d3f 100%);z-index:400;display:flex;justify-content:center;align-items:center}
-.login-box{background:#fff;border-radius:20px;max-width:400px;width:90%;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center}
-.login-box .logo{font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:4px;color:#1d1d1f}
-.login-box .subtitle{font-size:13px;color:var(--sub);margin-bottom:32px}
-.login-box input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;text-align:center;margin-bottom:16px;outline:none;transition:border .2s}
-.login-box input:focus{border-color:var(--accent)}
-.login-box input::placeholder{color:#c7c7cc}
-.login-box .login-btn{width:100%;padding:14px;background:#1d1d1f;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
-.login-box .login-btn:hover{background:#333}
-.login-box .login-err{color:var(--close);font-size:13px;margin-bottom:12px;display:none}
-.login-box .powered{font-size:11px;color:#c7c7cc;margin-top:24px}
-/* Token setup (friendlier version) */
-.token-setup-box{background:#fff;border-radius:16px;max-width:460px;width:90%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
-.token-setup-box h3{font-size:18px;margin-bottom:8px}
-.token-setup-box p{font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:20px}
-.token-setup-box input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px}
-.token-setup-box .setup-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.token-setup-box .setup-btn:hover{background:#005bb5}
-.token-setup-box .setup-err{color:var(--close);font-size:12px;margin-bottom:8px;display:none}
+.login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1a1a2e 0%,#2d2b55 50%,#16213e 100%);z-index:400;display:flex;justify-content:center;align-items:center}
+.login-box{background:#fff;border-radius:24px;max-width:380px;width:90%;padding:44px 40px;box-shadow:0 24px 80px rgba(0,0,0,.3);text-align:center}
+.login-box .logo{font-size:22px;font-weight:700;letter-spacing:3px;margin-bottom:6px;color:#1a1a2e}
+.login-box .subtitle{font-size:12.5px;color:var(--sub);margin-bottom:36px;letter-spacing:.5px;font-weight:400}
+.login-box input{width:100%;padding:14px 18px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;text-align:center;margin-bottom:18px;outline:none;transition:all .2s;font-family:var(--font);letter-spacing:1px}
+.login-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+.login-box input::placeholder{color:#c7c7cc;letter-spacing:.5px}
+.login-box .login-btn{width:100%;padding:14px;background:linear-gradient(135deg,#1a1a2e,#2d2b55);color:#fff;border:none;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer;transition:all .2s;font-family:var(--font);letter-spacing:.5px}
+.login-box .login-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,26,46,.3)}
+.login-box .login-err{color:var(--close);font-size:13px;margin-bottom:14px;display:none;font-weight:500}
+.login-box .powered{font-size:11px;color:#c7c7cc;margin-top:28px;letter-spacing:.5px}
+/* Token setup */
+.token-setup-box{background:#fff;border-radius:20px;max-width:440px;width:90%;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+.token-setup-box h3{font-size:18px;margin-bottom:8px;font-weight:700;letter-spacing:.2px}
+.token-setup-box p{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:22px}
+.token-setup-box input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:18px;font-family:var(--font);transition:border .2s}
+.token-setup-box input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-light)}
+.token-setup-box .setup-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
+.token-setup-box .setup-btn:hover{background:#3b5de7}
+.token-setup-box .setup-err{color:var(--close);font-size:12px;margin-bottom:10px;display:none}
+/* Button in table */
+.btn-secondary{background:#f1f3f8;color:var(--text);border:none;padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer;font-family:var(--font);font-weight:500;transition:all .15s;letter-spacing:.2px}
+.btn-secondary:hover{background:#e2e5eb;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -846,11 +859,11 @@ function showCandidateDetail(id) {
 
 function showEditPosition(id) {
   var p = STATE.positions.find(function(x){return x.id===id;}); if(!p) return;
-  openModal('<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')"><div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept" value="'+esc(p.dept||'')+'"></div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div><div class="field"><label>国籍</label><input name="nationality" value="'+esc(p.nationality||'')+'"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base" value="'+esc(p.base||'')+'"></div><div class="field"><label>チャネル</label><input name="channels" value="'+esc(p.channels||'')+'"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入...">'+esc(p.jd||'')+'</textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など...">'+esc(p.requirements||'')+'</textarea></div><div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div><div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>');
+  openModal('<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')"><div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label>'+deptSelectHtml(p.dept||'')+'</div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div><div class="field"><label>国籍</label><input name="nationality" value="'+esc(p.nationality||'')+'"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base" value="'+esc(p.base||'')+'"></div><div class="field"><label>チャネル</label><input name="channels" value="'+esc(p.channels||'')+'"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入...">'+esc(p.jd||'')+'</textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など...">'+esc(p.requirements||'')+'</textarea></div><div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div><div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>');
 }
 
 function showAddPosition() {
-  openModal('<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)"><div class="field"><label>ポジション名</label><input name="name" required></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label><input name="dept"></div><div class="field"><label>年収</label><input name="salary"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount"></div><div class="field"><label>国籍</label><input name="nationality"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base"></div><div class="field"><label>チャネル</label><input name="channels"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入..."></textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など..."></textarea></div><div class="field"><label>求人リンク</label><input name="jobLink"></div><div class="field"><label>メモ</label><textarea name="memo"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
+  openModal('<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)"><div class="field"><label>ポジション名</label><input name="name" required></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label>'+deptSelectHtml('')+'</div><div class="field"><label>年収</label><input name="salary"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount"></div><div class="field"><label>国籍</label><input name="nationality"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base"></div><div class="field"><label>チャネル</label><input name="channels"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入..."></textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など..."></textarea></div><div class="field"><label>求人リンク</label><input name="jobLink"></div><div class="field"><label>メモ</label><textarea name="memo"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
 }
 
 function showEditCandidate(id) {
@@ -867,6 +880,17 @@ function showAddCandidate() {
 }
 
 // ===== HELPERS =====
+function deptSelectHtml(selected) {
+  var depts = [];
+  STATE.positions.forEach(function(p){ if(p.dept && !depts.includes(p.dept)) depts.push(p.dept); });
+  depts.sort();
+  var opts = '<option value="">-- 選択 --</option>';
+  depts.forEach(function(d){ opts+='<option value="'+esc(d)+'" '+(selected===d?'selected':'')+'>'+esc(d)+'</option>'; });
+  return '<select name="dept" onchange="if(this.value===\'__new__\'){var v=prompt(\'新しい部門名を入力\');if(v){var o=document.createElement(\'option\');o.value=v;o.text=v;o.selected=true;this.add(o,this.options.length-1);}else{this.value=\''+(selected?esc(selected):'')+'\';}}"><option value="">-- 選択 --</option>' +
+    depts.map(function(d){ return '<option value="'+esc(d)+'" '+(selected===d?'selected':'')+'>'+esc(d)+'</option>'; }).join('') +
+    '<option value="__new__" style="color:var(--accent)">＋ 新規追加...</option></select>';
+}
+
 function positionSelectHtml(selected) {
   var opts = '<option value="">-- 選択 --</option>';
   var openPos = STATE.positions.filter(function(p){return p.status!=='CLOSE'}).sort(function(a,b){return (a.dept||'').localeCompare(b.dept||'');});
