@@ -111,6 +111,8 @@ tr:last-child td{border-bottom:none}
 .biz-block-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
 .biz-block-header h2{font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--text)}
 .biz-block-header .biz-count{background:var(--accent-light);color:var(--accent);font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600}
+.dept-divider td{background:#f5f3f0;padding:8px 14px !important;border-bottom:1px solid var(--border) !important;font-size:12px}
+.dept-divider-name{font-weight:700;color:var(--text);margin-right:8px;letter-spacing:.3px}
 .dept-group{margin-bottom:24px}
 .dept-group-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:4px 0}
 .dept-group-header h3{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.3px}
@@ -708,32 +710,35 @@ function renderPositions() {
   // Business division mapping
   var RETAIL_DEPTS = ['Operation','店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺','运营','運営'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
-  function renderDeptTable(items, dept) {
-    var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
-    var h = '<div class="dept-group"><div class="dept-group-header"><h3>'+esc(dept)+'</h3><span class="dept-count">'+items.length+'件</span>'+(openCount?'<span class="dept-open">'+openCount+' OPEN</span>':'')+'</div>';
-    h += '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th>メモ</th><th></th></tr></thead><tbody>';
-    items.forEach(function(p){
-      var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
-      var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
-      h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,20))+((p.memo||'').length>20?'...':'')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+  function renderBizTable(deptList) {
+    if(!deptList.length) return '<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
+    var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th></th></tr></thead><tbody>';
+    deptList.forEach(function(dept){
+      var items = deptMap[dept];
+      var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
+      h += '<tr class="dept-divider"><td colspan="5"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
+      items.forEach(function(p){
+        var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
+        var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
+        h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+      });
     });
-    h += '</tbody></table></div>';
+    h += '</tbody></table>';
     return h;
   }
   var retailDepts=[], brandDepts=[];
   deptOrder.forEach(function(dept){
     if(isRetail(dept)) retailDepts.push(dept); else brandDepts.push(dept);
   });
-  var retailTotal=0, brandTotal=0;
-  retailDepts.forEach(function(d){retailTotal+=deptMap[d].length;});
-  brandDepts.forEach(function(d){brandTotal+=deptMap[d].length;});
+  var retailTotal=0, brandTotal=0, retailOpen=0, brandOpen=0;
+  retailDepts.forEach(function(d){retailTotal+=deptMap[d].length; deptMap[d].forEach(function(p){if(p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載')retailOpen++;});});
+  brandDepts.forEach(function(d){brandTotal+=deptMap[d].length; deptMap[d].forEach(function(p){if(p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載')brandOpen++;});});
   html += '<div class="biz-columns">';
-  html += '<div class="biz-block"><div class="biz-block-header"><h2>Retail Business</h2><span class="biz-count">'+retailTotal+'件</span></div>';
-  if(!retailDepts.length) html+='<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
-  retailDepts.forEach(function(dept){ html += renderDeptTable(deptMap[dept], dept); });
+  html += '<div class="biz-block"><div class="biz-block-header"><h2>Retail Business</h2><span class="biz-count">'+retailTotal+'件</span>'+(retailOpen?'<span class="dept-open">'+retailOpen+' open</span>':'')+'</div>';
+  html += renderBizTable(retailDepts);
   html += '</div>';
-  html += '<div class="biz-block"><div class="biz-block-header"><h2>Brand 推進</h2><span class="biz-count">'+brandTotal+'件</span></div>';
-  if(!brandDepts.length) html+='<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
+  html += '<div class="biz-block"><div class="biz-block-header"><h2>Brand 推進</h2><span class="biz-count">'+brandTotal+'件</span>'+(brandOpen?'<span class="dept-open">'+brandOpen+' open</span>':'')+'</div>';
+  html += renderBizTable(brandDepts);
   brandDepts.forEach(function(dept){ html += renderDeptTable(deptMap[dept], dept); });
   html += '</div></div>';
   document.getElementById('content').innerHTML = html;
