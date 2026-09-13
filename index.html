@@ -194,17 +194,87 @@ tr:last-child td{border-bottom:none}
 // ===== LOGIN =====
 const PW_HASH = '506c92291bb7a59d9c6357184388dd81cd192140516a68220ab93c77f46b5b0e';
 const LS_AUTH_KEY = 'vjp_auth';
+const GH_TOKEN_FILE = 'token.enc';
+let TEAM_PASSWORD = '';
 
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+// AES encrypt/decrypt using team password
+async function deriveKey(password) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: enc.encode('vjp-salt-2026'), iterations:100000, hash:'SHA-256'},
+    keyMaterial, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']
+  );
+}
+
+async function encryptToken(token, password) {
+  const key = await deriveKey(password);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, enc.encode(token));
+  // Combine iv + ciphertext, base64 encode
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptToken(encrypted, password) {
+  try {
+    const key = await deriveKey(password);
+    const raw = Uint8Array.from(atob(encrypted), c=>c.charCodeAt(0));
+    const iv = raw.slice(0,12);
+    const ct = raw.slice(12);
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM',iv}, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch(e) { return null; }
+}
+
+// Try to fetch encrypted token from GitHub (public repo - no auth needed)
+async function fetchEncryptedToken() {
+  try {
+    const url = 'https://raw.githubusercontent.com/Sini870522/vjp-dashboard/main/' + GH_TOKEN_FILE + '?t=' + Date.now();
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch(e) { return null; }
+}
+
+// Save encrypted token to public repo (needs a token with write access to public repo)
+async function saveEncryptedToken(encryptedData, writeToken) {
+  const url = 'https://api.github.com/repos/Sini870522/vjp-dashboard/contents/' + GH_TOKEN_FILE;
+  // Check if file exists to get SHA
+  let sha = '';
+  try {
+    const check = await fetch(url, {headers:{'Authorization':'token '+writeToken,'Accept':'application/vnd.github.v3+json'}});
+    if (check.ok) { const d = await check.json(); sha = d.sha; }
+  } catch(e){}
+  
+  const body = {
+    message: 'Update encrypted config',
+    content: btoa(unescape(encodeURIComponent(encryptedData)))
+  };
+  if (sha) body.sha = sha;
+  const res = await fetch(url, {
+    method:'PUT',
+    headers:{'Authorization':'token '+writeToken,'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  return res.ok;
+}
+
 async function checkLogin() {
   const pw = document.getElementById('loginPassword').value;
   const hash = await sha256(pw);
   if (hash === PW_HASH) {
+    TEAM_PASSWORD = pw;
     sessionStorage.setItem(LS_AUTH_KEY, '1');
+    sessionStorage.setItem('vjp_pw', pw);
     document.getElementById('loginOverlay').style.display = 'none';
     afterLogin();
   } else {
@@ -217,57 +287,110 @@ async function checkLogin() {
 }
 
 function checkAuth() {
-  return sessionStorage.getItem(LS_AUTH_KEY) === '1';
+  if (sessionStorage.getItem(LS_AUTH_KEY) === '1') {
+    TEAM_PASSWORD = sessionStorage.getItem('vjp_pw') || '';
+    return true;
+  }
+  return false;
 }
 
 async function afterLogin() {
+  document.getElementById('content').innerHTML = '<div class="loading-overlay">データ読み込み中...</div>';
+  
+  // 1. Check localStorage for token
   if (GH_TOKEN) {
-    document.getElementById('content').innerHTML = '<div class="loading-overlay">データ読み込み中...</div>';
     const data = await ghFetch();
     if (data) {
       STATE = data;
       try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(STATE)); } catch(e){}
       render();
-    } else {
-      try {
-        const cached = localStorage.getItem(LS_CACHE_KEY);
-        if (cached) { STATE = JSON.parse(cached); render(); }
-        else { STATE = JSON.parse(JSON.stringify(DEFAULT_DATA)); render(); }
-      } catch(e) { STATE = JSON.parse(JSON.stringify(DEFAULT_DATA)); render(); }
+      return;
     }
-  } else {
-    showTokenSetup();
   }
+  
+  // 2. Try to fetch encrypted token from public repo and decrypt with password
+  const encrypted = await fetchEncryptedToken();
+  if (encrypted && TEAM_PASSWORD) {
+    const token = await decryptToken(encrypted, TEAM_PASSWORD);
+    if (token) {
+      GH_TOKEN = token;
+      localStorage.setItem(LS_TOKEN_KEY, token);
+      const data = await ghFetch();
+      if (data) {
+        STATE = data;
+        try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(STATE)); } catch(e){}
+        render();
+        return;
+      }
+    }
+  }
+  
+  // 3. Try cache
+  try {
+    const cached = localStorage.getItem(LS_CACHE_KEY);
+    if (cached) { STATE = JSON.parse(cached); render(); setSyncStatus('offline','キャッシュ'); return; }
+  } catch(e){}
+  
+  // 4. No token anywhere - show admin setup
+  showAdminSetup();
 }
 
-function showTokenSetup(errMsg) {
+function showAdminSetup(errMsg) {
   document.getElementById('setupOverlay').innerHTML = '<div class="setup-overlay">' +
     '<div class="token-setup-box">' +
-    '<h3>初回セットアップ</h3>' +
-    '<p>Siniからアクセスキーを受け取り、<br>下に貼り付けてください。</p>' +
+    '<h3>管理者セットアップ</h3>' +
+    '<p>初回のみ：GitHubアクセスキーを<br>設定してください。<br><small style="color:#999">設定後、チームメンバーはパスワードだけで利用できます。</small></p>' +
     (errMsg ? '<div class="setup-err" style="display:block">' + errMsg + '</div>' : '') +
-    '<input type="text" id="tokenInput" placeholder="アクセスキーを貼り付け">' +
-    '<button class="setup-btn" onclick="connectWithToken()">接続</button>' +
+    '<input type="text" id="tokenInput" placeholder="ghp_xxxx... を貼り付け">' +
+    '<button class="setup-btn" onclick="adminConnect()">設定して接続</button>' +
     '</div></div>';
 }
 
-async function connectWithToken() {
+async function adminConnect() {
   const token = document.getElementById('tokenInput').value.trim();
   if (!token) return;
   GH_TOKEN = token;
   localStorage.setItem(LS_TOKEN_KEY, token);
-  document.getElementById('setupOverlay').innerHTML = '<div class="loading-overlay">接続中...</div>';
+  document.getElementById('setupOverlay').innerHTML = '<div class="loading-overlay">接続・暗号化中...</div>';
+  
+  // Test token against private data repo
   const data = await ghFetch();
+  if (!data && !GH_SHA) {
+    // Token invalid for data repo
+    GH_TOKEN = '';
+    localStorage.removeItem(LS_TOKEN_KEY);
+    showAdminSetup('接続できませんでした。アクセスキーを確認してください。');
+    return;
+  }
+  
+  // Encrypt token with team password
+  let encrypted = '';
+  if (TEAM_PASSWORD) {
+    encrypted = await encryptToken(token, TEAM_PASSWORD);
+    // Try to save to public repo
+    const saved = await saveEncryptedToken(encrypted, token);
+    if (saved) {
+      console.log('Encrypted token saved to public repo successfully');
+    } else {
+      // Save failed - store encrypted string for manual upload
+      console.log('Auto-save failed, encrypted token stored in window._encToken');
+      window._encToken = encrypted;
+    }
+  }
+
   if (data) {
     STATE = data;
     try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(STATE)); } catch(e){}
-    document.getElementById('setupOverlay').innerHTML = '';
-    render();
-    showToast('接続成功！');
   } else {
-    showTokenSetup('接続できませんでした。アクセスキーを確認してください。');
+    STATE = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    await ghSave();
   }
+  document.getElementById('setupOverlay').innerHTML = '';
+  render();
+  showToast('接続成功！');
 }
+
+function showTokenSetup(errMsg) { showAdminSetup(errMsg); }
 
 // ===== GITHUB CONFIG =====
 const GH_REPO = 'ptmafia/vjp_gogogo';
