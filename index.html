@@ -121,9 +121,41 @@ tr:last-child td{border-bottom:none}
   .stats{flex-wrap:wrap}
   .header{padding:12px 16px}
 }
+
+/* Login screen */
+.login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1d1d1f 0%,#2d2d3f 100%);z-index:400;display:flex;justify-content:center;align-items:center}
+.login-box{background:#fff;border-radius:20px;max-width:400px;width:90%;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center}
+.login-box .logo{font-size:28px;font-weight:700;letter-spacing:2px;margin-bottom:4px;color:#1d1d1f}
+.login-box .subtitle{font-size:13px;color:var(--sub);margin-bottom:32px}
+.login-box input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;text-align:center;margin-bottom:16px;outline:none;transition:border .2s}
+.login-box input:focus{border-color:var(--accent)}
+.login-box input::placeholder{color:#c7c7cc}
+.login-box .login-btn{width:100%;padding:14px;background:#1d1d1f;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
+.login-box .login-btn:hover{background:#333}
+.login-box .login-err{color:var(--close);font-size:13px;margin-bottom:12px;display:none}
+.login-box .powered{font-size:11px;color:#c7c7cc;margin-top:24px}
+/* Token setup (friendlier version) */
+.token-setup-box{background:#fff;border-radius:16px;max-width:460px;width:90%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.token-setup-box h3{font-size:18px;margin-bottom:8px}
+.token-setup-box p{font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:20px}
+.token-setup-box input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:16px}
+.token-setup-box .setup-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.token-setup-box .setup-btn:hover{background:#005bb5}
+.token-setup-box .setup-err{color:var(--close);font-size:12px;margin-bottom:8px;display:none}
 </style>
 </head>
 <body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="logo">VJP 採用管理</div>
+    <div class="subtitle">VIVAIA Japan ・ チームダッシュボード</div>
+    <div class="login-err" id="loginErr">パスワードが違います</div>
+    <input type="password" id="loginPassword" placeholder="チームパスワード" onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="login-btn" onclick="checkLogin()">ログイン</button>
+    <div class="powered">Powered by GitHub</div>
+  </div>
+</div>
 
 <div class="header">
   <div>
@@ -136,7 +168,7 @@ tr:last-child td{border-bottom:none}
     <button onclick="exportData()">📤 エクスポート</button>
     <button onclick="document.getElementById('importFile').click()">📥 インポート</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-    <button onclick="showSetupDialog()">⚙️</button>
+    <button onclick="showTokenSetup()">⚙️</button>
   </div>
 </div>
 
@@ -159,6 +191,84 @@ tr:last-child td{border-bottom:none}
 <div id="setupOverlay"></div>
 
 <script>
+// ===== LOGIN =====
+const PW_HASH = '506c92291bb7a59d9c6357184388dd81cd192140516a68220ab93c77f46b5b0e';
+const LS_AUTH_KEY = 'vjp_auth';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkLogin() {
+  const pw = document.getElementById('loginPassword').value;
+  const hash = await sha256(pw);
+  if (hash === PW_HASH) {
+    sessionStorage.setItem(LS_AUTH_KEY, '1');
+    document.getElementById('loginOverlay').style.display = 'none';
+    afterLogin();
+  } else {
+    const err = document.getElementById('loginErr');
+    err.style.display = 'block';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginPassword').focus();
+    setTimeout(()=>{err.style.display='none'}, 3000);
+  }
+}
+
+function checkAuth() {
+  return sessionStorage.getItem(LS_AUTH_KEY) === '1';
+}
+
+async function afterLogin() {
+  if (GH_TOKEN) {
+    document.getElementById('content').innerHTML = '<div class="loading-overlay">データ読み込み中...</div>';
+    const data = await ghFetch();
+    if (data) {
+      STATE = data;
+      try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(STATE)); } catch(e){}
+      render();
+    } else {
+      try {
+        const cached = localStorage.getItem(LS_CACHE_KEY);
+        if (cached) { STATE = JSON.parse(cached); render(); }
+        else { STATE = JSON.parse(JSON.stringify(DEFAULT_DATA)); render(); }
+      } catch(e) { STATE = JSON.parse(JSON.stringify(DEFAULT_DATA)); render(); }
+    }
+  } else {
+    showTokenSetup();
+  }
+}
+
+function showTokenSetup(errMsg) {
+  document.getElementById('setupOverlay').innerHTML = '<div class="setup-overlay">' +
+    '<div class="token-setup-box">' +
+    '<h3>初回セットアップ</h3>' +
+    '<p>Siniからアクセスキーを受け取り、<br>下に貼り付けてください。</p>' +
+    (errMsg ? '<div class="setup-err" style="display:block">' + errMsg + '</div>' : '') +
+    '<input type="text" id="tokenInput" placeholder="アクセスキーを貼り付け">' +
+    '<button class="setup-btn" onclick="connectWithToken()">接続</button>' +
+    '</div></div>';
+}
+
+async function connectWithToken() {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) return;
+  GH_TOKEN = token;
+  localStorage.setItem(LS_TOKEN_KEY, token);
+  document.getElementById('setupOverlay').innerHTML = '<div class="loading-overlay">接続中...</div>';
+  const data = await ghFetch();
+  if (data) {
+    STATE = data;
+    try { localStorage.setItem(LS_CACHE_KEY, JSON.stringify(STATE)); } catch(e){}
+    document.getElementById('setupOverlay').innerHTML = '';
+    render();
+    showToast('接続成功！');
+  } else {
+    showTokenSetup('接続できませんでした。アクセスキーを確認してください。');
+  }
+}
+
 // ===== GITHUB CONFIG =====
 const GH_REPO = 'ptmafia/vjp_gogogo';
 const GH_FILE = 'recruitment-data.json';
@@ -169,7 +279,7 @@ const LS_CACHE_KEY = 'vjp_data_cache';
 let GH_TOKEN = localStorage.getItem(LS_TOKEN_KEY) || '';
 let GH_SHA = '';
 
-// ===== DEFAULT DATA (deployed - data from GitHub only) =====
+// ===== DEFAULT DATA (deployed) =====
 const DEFAULT_DATA = {positions:[],candidates:[],weekly:{},nextPosId:100,nextCandId:100};
 
 // ===== STATE =====
@@ -267,7 +377,7 @@ async function syncFromGitHub() {
 }
 
 // ===== SETUP DIALOG =====
-function showSetupDialog(errMsg) {
+function showSetupDialog(errMsg) { showTokenSetup(errMsg); return; /* original below */
   document.getElementById('setupOverlay').innerHTML = '<div class="setup-overlay" onclick="if(event.target===this&&STATE)this.innerHTML=\'\'">' +
     '<div class="setup-box">' +
     '<h2>GitHub 接続設定</h2>' +
@@ -335,6 +445,17 @@ function useOffline() {
 
 // ===== INIT =====
 async function init() {
+  // Check if already authenticated this session
+  if (checkAuth()) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    afterLogin();
+    return;
+  }
+  // Show login screen, hide dashboard
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginPassword').focus();
+  /* original init below - kept for reference */
+  return;
   if (GH_TOKEN) {
     const data = await ghFetch();
     if (data) {
