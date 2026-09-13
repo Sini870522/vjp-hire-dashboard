@@ -738,7 +738,6 @@ function renderPositions() {
   html += '</div>';
   html += '<div class="biz-block"><div class="biz-block-header"><h2>Brand 推進</h2><span class="biz-count">'+brandTotal+'件</span>'+(brandOpen?'<span class="dept-open">'+brandOpen+' open</span>':'')+'</div>';
   html += renderBizTable(brandDepts);
-  brandDepts.forEach(function(dept){ html += renderDeptTable(deptMap[dept], dept); });
   html += '</div></div>';
   document.getElementById('content').innerHTML = html;
 }
