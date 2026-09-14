@@ -137,6 +137,23 @@ tr:last-child td{border-bottom:none}
 .pipe-stage:hover{background:var(--accent-light)}
 .pipe-stage b{color:var(--accent);margin-left:2px}
 td{position:relative}
+.ms-wrap{position:relative}
+.ms-selected{display:flex;flex-wrap:wrap;gap:4px;min-height:36px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:#fff;align-items:center;transition:border-color .2s}
+.ms-selected:hover{border-color:var(--accent)}
+.ms-selected.open{border-color:var(--accent);box-shadow:0 0 0 2px rgba(107,92,79,.12)}
+.ms-tag{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:12px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.ms-tag .ms-rm{cursor:pointer;font-size:13px;line-height:1;opacity:.6;margin-left:2px}
+.ms-tag .ms-rm:hover{opacity:1}
+.ms-ph{color:var(--sub);font-size:12.5px}
+.ms-dd{position:absolute;top:100%;left:0;right:0;z-index:20;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);margin-top:4px;max-height:200px;overflow-y:auto;display:none}
+.ms-dd.show{display:block}
+.ms-opt{padding:7px 12px;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s}
+.ms-opt:hover{background:var(--accent-light)}
+.ms-opt.sel{color:var(--accent);font-weight:600}
+.ms-opt .ms-chk{width:14px;height:14px;border:1.5px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .15s}
+.ms-opt.sel .ms-chk{background:var(--accent);border-color:var(--accent);color:#fff}
+.ms-input-row{padding:6px 8px;border-bottom:1px solid var(--border)}
+.ms-input-row input{width:100%;border:none;outline:none;font-size:12px;font-family:var(--font);padding:2px 0}
 .toast{position:fixed;bottom:24px;right:24px;background:#2c2825;color:#fff;padding:14px 24px;border-radius:12px;font-size:13.5px;z-index:200;display:none;animation:fadeIn .3s;box-shadow:0 8px 24px rgba(0,0,0,.15);font-weight:500;letter-spacing:.2px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 /* Setup dialog */
@@ -948,11 +965,41 @@ function showCandidateDetail(id) {
 
 function showEditPosition(id) {
   var p = STATE.positions.find(function(x){return x.id===id;}); if(!p) return;
-  openModal('<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')"><div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label>'+deptSelectHtml(p.dept||'')+'</div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div><div class="field"><label>国籍</label><input name="nationality" value="'+esc(p.nationality||'')+'"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base" value="'+esc(p.base||'')+'"></div><div class="field"><label>チャネル</label><input name="channels" value="'+esc(p.channels||'')+'"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入...">'+esc(p.jd||'')+'</textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など...">'+esc(p.requirements||'')+'</textarea></div><div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div><div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>');
+  msCounter = 0;
+  var h = '<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')">';
+  h += '<div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div>';
+  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div>';
+  h += '<div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div>';
+  h += '<div class="row"><div class="field"><label>部門</label>'+deptSelectHtml(p.dept||'')+'</div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div>';
+  h += '<div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div>';
+  h += '<div class="field"><label>国籍</label>'+multiSelectHtml('nationality',p.nationality||'','国籍を選択...')+'</div></div>';
+  h += '<div class="row"><div class="field"><label>勤務地</label>'+multiSelectHtml('base',p.base||'','勤務地を選択...')+'</div>';
+  h += '<div class="field"><label>チャネル</label>'+multiSelectHtml('channels',p.channels||'','チャネルを選択...')+'</div></div>';
+  h += '<div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入...">'+esc(p.jd||'')+'</textarea></div>';
+  h += '<div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など...">'+esc(p.requirements||'')+'</textarea></div>';
+  h += '<div class="field"><label>求人リンク</label><input name="jobLink" value="'+esc(p.jobLink||'')+'"></div>';
+  h += '<div class="field"><label>メモ</label><textarea name="memo">'+esc(p.memo||'')+'</textarea></div>';
+  h += '<div style="display:flex;gap:8px;margin-top:16px"><button type="submit" class="btn-primary">保存</button><button type="button" class="btn-danger" onclick="deletePosition(\''+p.id+'\')">削除</button></div></form>';
+  openModal(h);
 }
 
 function showAddPosition() {
-  openModal('<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)"><div class="field"><label>ポジション名</label><input name="name" required></div><div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div><div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div><div class="row"><div class="field"><label>部門</label>'+deptSelectHtml('')+'</div><div class="field"><label>年収</label><input name="salary"></div></div><div class="row"><div class="field"><label>人数</label><input name="headcount"></div><div class="field"><label>国籍</label><input name="nationality"></div></div><div class="row"><div class="field"><label>勤務地</label><input name="base"></div><div class="field"><label>チャネル</label><input name="channels"></div></div><div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入..."></textarea></div><div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など..."></textarea></div><div class="field"><label>求人リンク</label><input name="jobLink"></div><div class="field"><label>メモ</label><textarea name="memo"></textarea></div><button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>');
+  msCounter = 0;
+  var h = '<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)">';
+  h += '<div class="field"><label>ポジション名</label><input name="name" required></div>';
+  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>';
+  h += '<div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div>';
+  h += '<div class="row"><div class="field"><label>部門</label>'+deptSelectHtml('')+'</div><div class="field"><label>年収</label><input name="salary"></div></div>';
+  h += '<div class="row"><div class="field"><label>人数</label><input name="headcount"></div>';
+  h += '<div class="field"><label>国籍</label>'+multiSelectHtml('nationality','','国籍を選択...')+'</div></div>';
+  h += '<div class="row"><div class="field"><label>勤務地</label>'+multiSelectHtml('base','','勤務地を選択...')+'</div>';
+  h += '<div class="field"><label>チャネル</label>'+multiSelectHtml('channels','','チャネルを選択...')+'</div></div>';
+  h += '<div class="field"><label>職務内容（JD）</label><textarea name="jd" style="min-height:120px" placeholder="このポジションの職務内容を記入..."></textarea></div>';
+  h += '<div class="field"><label>応募要件</label><textarea name="requirements" style="min-height:80px" placeholder="必須スキル・経験・資格など..."></textarea></div>';
+  h += '<div class="field"><label>求人リンク</label><input name="jobLink"></div>';
+  h += '<div class="field"><label>メモ</label><textarea name="memo"></textarea></div>';
+  h += '<button type="submit" class="btn-primary" style="margin-top:16px">追加</button></form>';
+  openModal(h);
 }
 
 function showEditCandidate(id) {
@@ -979,6 +1026,89 @@ function deptSelectHtml(selected) {
     depts.map(function(d){ return '<option value="'+esc(d)+'" '+(selected===d?'selected':'')+'>'+esc(d)+'</option>'; }).join('') +
     '<option value="__new__" style="color:var(--accent)">＋ 新規追加...</option></select>';
 }
+
+// Multi-select component
+var MS_OPTIONS = {
+  nationality: ['日本Local','中国','韓国','グローバル','不問'],
+  base: ['東京','北京','リモート','東京/北京'],
+  channels: ['AMBI','LinkedIn','Indeed','Wantedly','Green','doda','エージェント','紹介','自社HP','その他']
+};
+var msCounter = 0;
+function multiSelectHtml(name, currentVal, placeholder) {
+  var id = 'ms_' + (msCounter++);
+  var selected = (currentVal||'').split(/[,、\/]+/).map(function(s){return s.trim();}).filter(Boolean);
+  var options = (MS_OPTIONS[name]||[]).slice();
+  // add any existing values not in defaults
+  selected.forEach(function(s){ if(options.indexOf(s)<0 && s) options.push(s); });
+  var tags = selected.map(function(s){return '<span class="ms-tag" data-v="'+esc(s)+'">'+esc(s)+'<span class="ms-rm" onclick="event.stopPropagation();msRemove(\''+id+'\',\''+esc(s).replace(/'/g,"\\'")+'\')">×</span></span>';}).join('');
+  var optHtml = options.map(function(o){
+    var sel = selected.indexOf(o)>=0;
+    return '<div class="ms-opt'+(sel?' sel':'')+'" onclick="msToggle(\''+id+'\',\''+esc(o).replace(/'/g,"\\'")+'\',this)"><span class="ms-chk">'+(sel?'✓':'')+'</span>'+esc(o)+'</div>';
+  }).join('');
+  return '<div class="ms-wrap" id="'+id+'"><input type="hidden" name="'+name+'" value="'+esc(currentVal||'')+'"><div class="ms-selected" onclick="msOpen(\''+id+'\')">'+(tags||'<span class="ms-ph">'+esc(placeholder||'選択...')+'</span>')+'</div><div class="ms-dd"><div class="ms-input-row"><input placeholder="新規追加..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();msAddCustom(\''+id+'\',this);}"></div>'+optHtml+'</div></div>';
+}
+function msOpen(id) {
+  var wrap = document.getElementById(id);
+  var dd = wrap.querySelector('.ms-dd');
+  var sel = wrap.querySelector('.ms-selected');
+  var isOpen = dd.classList.contains('show');
+  // close all others first
+  document.querySelectorAll('.ms-dd.show').forEach(function(d){d.classList.remove('show');d.parentElement.querySelector('.ms-selected').classList.remove('open');});
+  if (!isOpen) { dd.classList.add('show'); sel.classList.add('open'); }
+}
+function msToggle(id, val, optEl) {
+  var wrap = document.getElementById(id);
+  var hidden = wrap.querySelector('input[type=hidden]');
+  var vals = hidden.value ? hidden.value.split(/[,、]+/).map(function(s){return s.trim();}).filter(Boolean) : [];
+  var idx = vals.indexOf(val);
+  if (idx >= 0) { vals.splice(idx, 1); optEl.classList.remove('sel'); optEl.querySelector('.ms-chk').textContent=''; }
+  else { vals.push(val); optEl.classList.add('sel'); optEl.querySelector('.ms-chk').textContent='✓'; }
+  hidden.value = vals.join(', ');
+  msRenderTags(id, vals);
+}
+function msRemove(id, val) {
+  var wrap = document.getElementById(id);
+  var hidden = wrap.querySelector('input[type=hidden]');
+  var vals = hidden.value.split(/[,、]+/).map(function(s){return s.trim();}).filter(Boolean);
+  vals = vals.filter(function(v){return v!==val;});
+  hidden.value = vals.join(', ');
+  msRenderTags(id, vals);
+  // update dropdown checkmarks
+  wrap.querySelectorAll('.ms-opt').forEach(function(o){
+    var t = o.textContent.replace('✓','').trim();
+    if (t === val) { o.classList.remove('sel'); o.querySelector('.ms-chk').textContent=''; }
+  });
+}
+function msRenderTags(id, vals) {
+  var wrap = document.getElementById(id);
+  var selDiv = wrap.querySelector('.ms-selected');
+  if (!vals.length) { selDiv.innerHTML = '<span class="ms-ph">選択...</span>'; return; }
+  selDiv.innerHTML = vals.map(function(s){return '<span class="ms-tag" data-v="'+esc(s)+'">'+esc(s)+'<span class="ms-rm" onclick="event.stopPropagation();msRemove(\''+id+'\',\''+s.replace(/'/g,"\\'")+'\')">×</span></span>';}).join('');
+}
+function msAddCustom(id, input) {
+  var val = input.value.trim(); if (!val) return;
+  input.value = '';
+  var wrap = document.getElementById(id);
+  var hidden = wrap.querySelector('input[type=hidden]');
+  var vals = hidden.value ? hidden.value.split(/[,、]+/).map(function(s){return s.trim();}).filter(Boolean) : [];
+  if (vals.indexOf(val) >= 0) return;
+  vals.push(val);
+  hidden.value = vals.join(', ');
+  msRenderTags(id, vals);
+  // add option to dropdown
+  var dd = wrap.querySelector('.ms-dd');
+  var optDiv = document.createElement('div');
+  optDiv.className = 'ms-opt sel';
+  optDiv.innerHTML = '<span class="ms-chk">✓</span>'+esc(val);
+  optDiv.onclick = function(){ msToggle(id, val, optDiv); };
+  dd.appendChild(optDiv);
+}
+// close multi-select on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-dd.show').forEach(function(d){d.classList.remove('show');d.parentElement.querySelector('.ms-selected').classList.remove('open');});
+  }
+});
 
 function positionSelectHtml(selected) {
   var opts = '<option value="">-- 選択 --</option>';
