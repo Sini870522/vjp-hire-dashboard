@@ -130,6 +130,13 @@ tr:last-child td{border-bottom:none}
 .toggle .slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .toggle input:checked+.slider{background:var(--accent)}
 .toggle input:checked+.slider:before{transform:translateX(16px)}
+.pipe-count{font-weight:700;color:var(--accent);cursor:pointer;padding:2px 8px;border-radius:12px;background:var(--accent-light);font-size:12px}
+.pipe-count:hover{background:#e4dfd9}
+.pipe-detail{position:absolute;z-index:10;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);padding:6px 0;margin-top:4px;min-width:140px}
+.pipe-stage{display:block;padding:5px 14px;font-size:12px;color:var(--text);cursor:pointer;text-decoration:none;white-space:nowrap}
+.pipe-stage:hover{background:var(--accent-light)}
+.pipe-stage b{color:var(--accent);margin-left:2px}
+td{position:relative}
 .toast{position:fixed;bottom:24px;right:24px;background:#2c2825;color:#fff;padding:14px 24px;border-radius:12px;font-size:13.5px;z-index:200;display:none;animation:fadeIn .3s;box-shadow:0 8px 24px rgba(0,0,0,.15);font-weight:500;letter-spacing:.2px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 /* Setup dialog */
@@ -718,17 +725,44 @@ function renderPositions() {
   // Business division mapping
   var RETAIL_DEPTS = ['Operation','店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺','运营','運営'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
+  // Build pipeline map: position name -> candidates by stage (exclude 見送り/辞退)
+  var pipeMap = {};
+  var PIPE_STAGES = ['書類選考','casual面談','一次面接','二次面接','内定承諾','已入社'];
+  STATE.candidates.forEach(function(c){
+    if (!c.position) return;
+    var isRejected = (c.judgment||'').includes('見送り') || c.status==='見送り' || c.status==='辞退';
+    if (isRejected) return;
+    if (!pipeMap[c.position]) pipeMap[c.position] = {total:0, stages:{}};
+    pipeMap[c.position].total++;
+    var st = c.status || '未設定';
+    pipeMap[c.position].stages[st] = (pipeMap[c.position].stages[st]||0) + 1;
+  });
   function renderBizTable(deptList) {
     if(!deptList.length) return '<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
-    var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
+    var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>Pipeline</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
     deptList.forEach(function(dept){
       var items = deptMap[dept].slice().sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
       var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
-      h += '<tr class="dept-divider"><td colspan="9"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
+      h += '<tr class="dept-divider"><td colspan="10"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
       items.forEach(function(p){
         var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
         var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
-        h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+esc(p.salary||'—')+'</td><td>'+esc(p.headcount||'—')+'</td><td title="'+esc(p.channels||'')+'">'+esc((p.channels||'—').substring(0,15))+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,20))+((p.memo||'').length>20?'...':'')+'</td><td>'+(p.updatedAt||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
+        var pipe = pipeMap[p.name];
+        var pipeHtml = '';
+        if (pipe && pipe.total > 0) {
+          var detailParts = [];
+          Object.keys(pipe.stages).forEach(function(st){ detailParts.push(st+' '+pipe.stages[st]+'名'); });
+          var pid = 'pipe_'+p.id;
+          pipeHtml = '<span class="pipe-count clickable" onclick="event.stopPropagation();var el=document.getElementById(\''+pid+'\');el.style.display=el.style.display===\'block\'?\'none\':\'block\'">'+pipe.total+'名</span>';
+          pipeHtml += '<div id="'+pid+'" class="pipe-detail" style="display:none">';
+          Object.keys(pipe.stages).forEach(function(st){
+            pipeHtml += '<a class="pipe-stage" onclick="event.stopPropagation();candFilter.position=\''+esc(p.name).replace(/'/g,"\\'")+'\';candFilter.dateRange=\'all\';document.querySelector(\'.tab.active\').classList.remove(\'active\');currentTab=\'candidates\';render();document.querySelectorAll(\'.tab\')[1].classList.add(\'active\')">'+esc(st)+' <b>'+pipe.stages[st]+'</b></a>';
+          });
+          pipeHtml += '</div>';
+        } else {
+          pipeHtml = '<span style="color:var(--sub)">—</span>';
+        }
+        h+='<tr><td class="clickable" onclick="showPositionDetail(\''+p.id+'\')">'+esc(p.name||'（未設定）')+'</td><td><span class="badge badge-'+sc+'">'+esc(p.status||'—')+'</span></td><td class="pri-'+pc+'">'+esc(p.priority||'—')+'</td><td>'+pipeHtml+'</td><td>'+esc(p.salary||'—')+'</td><td>'+esc(p.headcount||'—')+'</td><td title="'+esc(p.channels||'')+'">'+esc((p.channels||'—').substring(0,15))+'</td><td title="'+esc(p.memo||'')+'">'+esc((p.memo||'—').substring(0,20))+((p.memo||'').length>20?'...':'')+'</td><td>'+(p.updatedAt||'—')+'</td><td><button class="btn-secondary" onclick="showEditPosition(\''+p.id+'\')">編集</button></td></tr>';
       });
     });
     h += '</tbody></table>';
