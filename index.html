@@ -701,8 +701,8 @@ function renderPositions() {
     if (posFilter.search && !p.name.toLowerCase().includes(posFilter.search.toLowerCase()) && !(p.dept||'').toLowerCase().includes(posFilter.search.toLowerCase())) return false;
     return true;
   });
-  var priOrder = {HIGH:0,MID:1,LOW:2};
-  var statusOrder = {OPEN:0,'確認中':1,'未掲載':2,CLOSE:3};
+  var priOrder = {HIGH:1,MID:2,LOW:3};
+  var statusOrder = {OPEN:1,'確認中':2,'未掲載':3,CLOSE:4};
   filtered.sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
   var statuses = []; STATE.positions.forEach(function(p){if(p.status && !statuses.includes(p.status)) statuses.push(p.status);}); statuses.sort();
   // Group by department
@@ -726,16 +726,27 @@ function renderPositions() {
   var RETAIL_DEPTS = ['Operation','店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺','运营','運営'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
   // Build pipeline map: position name -> candidates by stage (exclude 見送り/辞退)
+  // Use fuzzy matching: candidate position may be a substring of position name or vice versa
   var pipeMap = {};
-  var PIPE_STAGES = ['書類選考','casual面談','一次面接','二次面接','内定承諾','已入社'];
+  var posNames = filtered.map(function(p){ return p.name; });
+  function matchPosName(candPos) {
+    var cp = (candPos||'').toLowerCase().replace(/[\s　]/g,'');
+    for (var i=0; i<posNames.length; i++) {
+      var pn = posNames[i].toLowerCase().replace(/[\s　]/g,'');
+      if (pn.indexOf(cp) >= 0 || cp.indexOf(pn) >= 0 || pn === cp) return posNames[i];
+    }
+    return null;
+  }
   STATE.candidates.forEach(function(c){
     if (!c.position) return;
     var isRejected = (c.judgment||'').includes('見送り') || c.status==='見送り' || c.status==='辞退';
     if (isRejected) return;
-    if (!pipeMap[c.position]) pipeMap[c.position] = {total:0, stages:{}};
-    pipeMap[c.position].total++;
+    var matched = matchPosName(c.position);
+    if (!matched) return;
+    if (!pipeMap[matched]) pipeMap[matched] = {total:0, stages:{}};
+    pipeMap[matched].total++;
     var st = c.status || '未設定';
-    pipeMap[c.position].stages[st] = (pipeMap[c.position].stages[st]||0) + 1;
+    pipeMap[matched].stages[st] = (pipeMap[matched].stages[st]||0) + 1;
   });
   function renderBizTable(deptList) {
     if(!deptList.length) return '<div style="text-align:center;padding:30px;color:var(--sub);font-size:13px">該当ポジションなし</div>';
