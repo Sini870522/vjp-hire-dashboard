@@ -723,7 +723,7 @@ function renderPositions() {
   html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><div class="toggle-wrap"><label class="toggle"><input type="checkbox" '+(posFilter.showClosed?'checked':'')+' onchange="posFilter.showClosed=this.checked;render()"><span class="slider"></span></label><span class="toggle-label" onclick="posFilter.showClosed=!posFilter.showClosed;render()">CLOSE表示</span></div><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
   if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
   // Business division mapping
-  var RETAIL_DEPTS = ['Operation','店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺','运营','運営'];
+  var RETAIL_DEPTS = ['店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
   // Build pipeline map: position name -> candidates by stage (exclude 見送り/辞退)
   // Use fuzzy matching: candidate position may be a substring of position name or vice versa
