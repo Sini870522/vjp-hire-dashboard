@@ -209,6 +209,12 @@ td{position:relative}
 .login-box .login-err{color:var(--close);font-size:13px;margin-bottom:14px;display:none;font-weight:500}
 .login-box .powered{font-size:11px;color:#c7c7cc;margin-top:28px;letter-spacing:.5px}
 /* Token setup */
+.share-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(44,40,37,.6);backdrop-filter:blur(4px);z-index:300;display:flex;justify-content:center;align-items:center}
+.share-box{background:#fff;border-radius:20px;max-width:480px;width:90%;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+.share-box h3{font-size:18px;margin-bottom:8px;font-weight:700}
+.share-box p{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:16px}
+.share-box .setup-btn{padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .2s}
+.share-box .setup-btn:hover{background:#584a3e}
 .token-setup-box{background:#fff;border-radius:20px;max-width:440px;width:90%;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
 .token-setup-box h3{font-size:18px;margin-bottom:8px;font-weight:700;letter-spacing:.2px}
 .token-setup-box p{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:22px}
@@ -246,6 +252,7 @@ td{position:relative}
     <button onclick="exportData()">📤 エクスポート</button>
     <button onclick="document.getElementById('importFile').click()">📥 インポート</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button onclick="shareToken()">🔗 共有</button>
     <button onclick="showTokenSetup()">⚙️</button>
   </div>
 </div>
@@ -469,6 +476,34 @@ async function adminConnect() {
 }
 
 function showTokenSetup(errMsg) { showAdminSetup(errMsg); }
+
+// ===== TOKEN SHARING =====
+async function shareToken() {
+  if (!GH_TOKEN) { showToast('トークン未設定です。先に⚙️で設定してください。'); return; }
+  if (!TEAM_PASSWORD) { showToast('パスワード未取得。再ログインしてください。'); return; }
+  try {
+    var encrypted = await encryptToken(GH_TOKEN, TEAM_PASSWORD);
+    var dlg = document.createElement('div');
+    dlg.className = 'share-overlay';
+    dlg.id = 'shareOverlay';
+    dlg.innerHTML = '<div class="share-box">' +
+      '<h3>🔗 トークン共有設定</h3>' +
+      '<p>以下の暗号化文字列をコピーして<br>管理者（Sini）に送ってください。<br><small style="color:#999">※ この文字列はパスワードなしでは復号できません。安全に共有できます。</small></p>' +
+      '<textarea id="shareTokenText" readonly rows="5" style="width:100%;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px;resize:none;background:#f9f8f6">' + encrypted + '</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:12px">' +
+      '<button class="setup-btn" onclick="copyShareToken()" style="flex:1">📋 コピー</button>' +
+      '<button class="setup-btn" onclick="document.getElementById(\'shareOverlay\').remove()" style="flex:1;background:#8a8580">閉じる</button>' +
+      '</div></div>';
+    document.body.appendChild(dlg);
+  } catch(e) { showToast('暗号化エラー: ' + e.message); }
+}
+
+function copyShareToken() {
+  var ta = document.getElementById('shareTokenText');
+  ta.select();
+  document.execCommand('copy');
+  showToast('コピーしました！');
+}
 
 // ===== GITHUB CONFIG =====
 const GH_REPO = 'ptmafia/vjp_gogogo';
