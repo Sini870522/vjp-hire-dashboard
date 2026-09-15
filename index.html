@@ -39,6 +39,7 @@ tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
 .badge-open{background:#e8f0eb;color:#3d7a52}
 .badge-close{background:#f5e4e4;color:#a14545}
+.badge-hired{background:#dfe8f5;color:#3d5a9e}
 .badge-hold{background:#f3ecdf;color:#8c6e30}
 .badge-unpub{background:#eeece9;color:#7a756f}
 .pri-high{color:var(--high);font-weight:700}
@@ -752,7 +753,7 @@ function render() {
 
 function renderStats() {
   var p = STATE.positions, c = STATE.candidates;
-  var open = p.filter(function(x){return x.status==='OPEN'}).length;
+  var open = p.filter(function(x){return x.status==='OPEN'||x.status==='再開'}).length;
   var hired = c.filter(function(x){return x.status==='已入社'||x.status==='内定承諾'}).length;
   var active = c.filter(function(x){return !['見送り','辞退','已入社','内定承諾'].includes(x.status)}).length;
   document.getElementById('statsBar').innerHTML =
@@ -778,7 +779,7 @@ function jumpToTab(tab, posName) {
 
 function renderPositions() {
   var filtered = STATE.positions.filter(function(p) {
-    if (!posFilter.showClosed && p.status === 'CLOSE') return false;
+    if (!posFilter.showClosed && (p.status === 'CLOSE' || p.status === '採用完了')) return false;
     if (posFilter.status !== 'all' && p.status !== posFilter.status) return false;
     if (posFilter.priority !== 'all' && p.priority !== posFilter.priority) return false;
     if (posFilter.dept && posFilter.dept !== 'all' && (p.dept||'未分類') !== posFilter.dept) return false;
@@ -786,7 +787,7 @@ function renderPositions() {
     return true;
   });
   var priOrder = {HIGH:1,MID:2,LOW:3};
-  var statusOrder = {OPEN:1,'確認中':2,'未掲載':3,CLOSE:4};
+  var statusOrder = {OPEN:1,'再開':1.5,'確認中':2,'未掲載':3,'採用完了':4,CLOSE:5};
   filtered.sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
   var statuses = []; STATE.positions.forEach(function(p){if(p.status && !statuses.includes(p.status)) statuses.push(p.status);}); statuses.sort();
   // Group by department
@@ -804,7 +805,7 @@ function renderPositions() {
   ['HIGH','MID','LOW'].forEach(function(s){html+='<option value="'+s+'" '+(posFilter.priority===s?'selected':'')+'>'+s+'</option>';});
   html += '</select><label>部門:</label><select onchange="posFilter.dept=this.value;candFilter.dept=this.value;render()"><option value="all">全て</option>';
   depts.forEach(function(d){html+='<option value="'+esc(d)+'" '+((posFilter.dept||'all')===d?'selected':'')+'>'+esc(d)+'</option>';});
-  html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><div class="toggle-wrap"><label class="toggle"><input type="checkbox" '+(posFilter.showClosed?'checked':'')+' onchange="posFilter.showClosed=this.checked;render()"><span class="slider"></span></label><span class="toggle-label" onclick="posFilter.showClosed=!posFilter.showClosed;render()">CLOSE表示</span></div><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
+  html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><div class="toggle-wrap"><label class="toggle"><input type="checkbox" '+(posFilter.showClosed?'checked':'')+' onchange="posFilter.showClosed=this.checked;render()"><span class="slider"></span></label><span class="toggle-label" onclick="posFilter.showClosed=!posFilter.showClosed;render()">完了/取消も表示</span></div><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
   if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
   // Business division mapping
   var RETAIL_DEPTS = ['店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺'];
@@ -841,7 +842,7 @@ function renderPositions() {
       var items = deptMap[dept].slice().sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
       h += '<tr class="dept-divider"><td colspan="10"><span class="dept-divider-name">'+esc(dept)+'</span></td></tr>';
       items.forEach(function(p){
-        var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
+        var sc=p.status==='OPEN'?'open':p.status==='再開'?'open':p.status==='CLOSE'?'close':p.status==='採用完了'?'hired':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
         var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
         var pipe = pipeMap[p.name];
         var pipeHtml = '';
@@ -1040,7 +1041,7 @@ function renderFunnel() {
   var weekData = STATE.weekly[weekKey] || {};
   var funnelDept = posFilter.dept || 'all';
   var openPos = STATE.positions.filter(function(p){
-    if (p.status==='CLOSE') return false;
+    if (p.status==='CLOSE' || p.status==='採用完了') return false;
     if (funnelDept !== 'all' && (p.dept||'未分類') !== funnelDept) return false;
     return true;
   }).sort(function(a,b){var po={HIGH:0,MID:1,LOW:2};return (po[a.priority]||9)-(po[b.priority]||9);});
@@ -1126,7 +1127,7 @@ function showEditPosition(id) {
   msCounter = 0;
   var h = '<h2>ポジション編集 <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="savePosition(event,\''+p.id+'\')">';
   h += '<div class="field"><label>ポジション名</label><input name="name" value="'+esc(p.name||'')+'"></div>';
-  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','CLOSE','確認中','未掲載'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div>';
+  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','採用完了','再開','CLOSE'].map(function(s){return '<option '+(p.status===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div>';
   h += '<div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option '+(p.priority===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div>';
   h += '<div class="row"><div class="field"><label>部門</label>'+deptSelectHtml(p.dept||'')+'</div><div class="field"><label>年収</label><input name="salary" value="'+esc(p.salary||'')+'"></div></div>';
   h += '<div class="row"><div class="field"><label>人数</label><input name="headcount" value="'+esc(p.headcount||'')+'"></div>';
@@ -1145,7 +1146,7 @@ function showAddPosition() {
   msCounter = 0;
   var h = '<h2>新規ポジション <button class="close-btn" onclick="closeModal()">✕</button></h2><form onsubmit="addPosition(event)">';
   h += '<div class="field"><label>ポジション名</label><input name="name" required></div>';
-  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>';
+  h += '<div class="row"><div class="field"><label>ステータス</label><select name="status">'+['OPEN','確認中','未掲載','採用完了','再開','CLOSE'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div>';
   h += '<div class="field"><label>優先度</label><select name="priority">'+['HIGH','MID','LOW'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select></div></div>';
   h += '<div class="row"><div class="field"><label>部門</label>'+deptSelectHtml('')+'</div><div class="field"><label>年収</label><input name="salary"></div></div>';
   h += '<div class="row"><div class="field"><label>人数</label><input name="headcount"></div>';
@@ -1270,7 +1271,7 @@ document.addEventListener('click', function(e) {
 
 function positionSelectHtml(selected) {
   var opts = '<option value="">-- 選択 --</option>';
-  var openPos = STATE.positions.filter(function(p){return p.status!=='CLOSE'}).sort(function(a,b){return (a.dept||'').localeCompare(b.dept||'');});
+  var openPos = STATE.positions.filter(function(p){return p.status!=='CLOSE'&&p.status!=='採用完了'}).sort(function(a,b){return (a.dept||'').localeCompare(b.dept||'');});
   var closedPos = STATE.positions.filter(function(p){return p.status==='CLOSE'});
   if (openPos.length) {
     opts += '<optgroup label="募集中">';
