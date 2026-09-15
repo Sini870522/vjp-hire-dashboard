@@ -522,7 +522,7 @@ const DEFAULT_DATA = {positions:[],candidates:[],weekly:{},nextPosId:100,nextCan
 let STATE = null;
 let currentTab = 'positions';
 let posFilter = {status:'all',priority:'all',dept:'all',search:'',showClosed:false};
-let candFilter = {dateRange:'year',search:'',position:'',fromDate:'',toDate:''};
+let candFilter = {dateRange:'year',search:'',position:'',fromDate:'',toDate:'',dept:'all'};
 let candView = 'status'; // 'status' or 'position'
 let funnelWeekOffset = 0;
 let funnelEditing = false;
@@ -734,6 +734,8 @@ async function saveAndSync() {
 // ===== RENDER =====
 function switchTab(tab) {
   currentTab = tab;
+  // Sync dept filter across tabs
+  candFilter.dept = posFilter.dept || 'all';
   document.querySelectorAll('.tab').forEach(function(t,i) {
     t.classList.toggle('active', ['positions','candidates','funnel'][i] === tab);
   });
@@ -759,6 +761,19 @@ function renderStats() {
     '<div class="stat"><div class="num" style="color:var(--hire)">'+hired+'</div><div class="lbl">採用/内定</div></div>' +
     '<div class="stat"><div class="num">'+active+'</div><div class="lbl">選考中</div></div>' +
     '<div class="stat"><div class="num">'+c.length+'</div><div class="lbl">候補者合計</div></div>';
+}
+
+function jumpToTab(tab, posName) {
+  var tabIdx = {positions:0,candidates:1,funnel:2}[tab] || 0;
+  if (tab === 'candidates') {
+    candFilter.position = posName || 'all';
+    candFilter.dateRange = 'all';
+    candFilter.dept = posFilter.dept || 'all';
+  }
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  currentTab = tab;
+  render();
+  document.querySelectorAll('.tab')[tabIdx].classList.add('active');
 }
 
 function renderPositions() {
@@ -787,7 +802,7 @@ function renderPositions() {
   statuses.forEach(function(s){html+='<option value="'+esc(s)+'" '+(posFilter.status===s?'selected':'')+'>'+esc(s)+'</option>';});
   html += '</select><label>優先度:</label><select onchange="posFilter.priority=this.value;render()"><option value="all">全て</option>';
   ['HIGH','MID','LOW'].forEach(function(s){html+='<option value="'+s+'" '+(posFilter.priority===s?'selected':'')+'>'+s+'</option>';});
-  html += '</select><label>部門:</label><select onchange="posFilter.dept=this.value;render()"><option value="all">全て</option>';
+  html += '</select><label>部門:</label><select onchange="posFilter.dept=this.value;candFilter.dept=this.value;render()"><option value="all">全て</option>';
   depts.forEach(function(d){html+='<option value="'+esc(d)+'" '+((posFilter.dept||'all')===d?'selected':'')+'>'+esc(d)+'</option>';});
   html += '</select><input type="text" placeholder="検索..." value="'+esc(posFilter.search)+'" oninput="posFilter.search=this.value;render()" style="flex:1;max-width:200px"><div class="toggle-wrap"><label class="toggle"><input type="checkbox" '+(posFilter.showClosed?'checked':'')+' onchange="posFilter.showClosed=this.checked;render()"><span class="slider"></span></label><span class="toggle-label" onclick="posFilter.showClosed=!posFilter.showClosed;render()">CLOSE表示</span></div><button class="add-btn" onclick="showAddPosition()">＋ 新規ポジション</button></div>';
   if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
@@ -834,10 +849,11 @@ function renderPositions() {
           var detailParts = [];
           Object.keys(pipe.stages).forEach(function(st){ detailParts.push(st+' '+pipe.stages[st]+'名'); });
           var pid = 'pipe_'+p.id;
-          pipeHtml = '<span class="pipe-count clickable" onclick="event.stopPropagation();var el=document.getElementById(\''+pid+'\');el.style.display=el.style.display===\'block\'?\'none\':\'block\'">'+pipe.total+'名</span>';
+          var pn = esc(p.name).replace(/'/g,"\\'");
+          pipeHtml = '<span class="pipe-count clickable" onclick="event.stopPropagation();jumpToTab(\'candidates\',\''+pn+'\')">'+pipe.total+'名</span>';
           pipeHtml += '<div id="'+pid+'" class="pipe-detail" style="display:none">';
           Object.keys(pipe.stages).forEach(function(st){
-            pipeHtml += '<a class="pipe-stage" onclick="event.stopPropagation();candFilter.position=\''+esc(p.name).replace(/'/g,"\\'")+'\';candFilter.dateRange=\'all\';document.querySelector(\'.tab.active\').classList.remove(\'active\');currentTab=\'candidates\';render();document.querySelectorAll(\'.tab\')[1].classList.add(\'active\')">'+esc(st)+' <b>'+pipe.stages[st]+'</b></a>';
+            pipeHtml += '<a class="pipe-stage" onclick="event.stopPropagation();jumpToTab(\'candidates\',\''+pn+'\')">'+esc(st)+' <b>'+pipe.stages[st]+'</b></a>';
           });
           pipeHtml += '</div>';
         } else {
@@ -873,9 +889,17 @@ function renderPositions() {
 function renderCandidates() {
   var now = new Date();
   var STAGES = ['書類選考','casual面談','一次面接','二次面接','内定承諾','已入社','見送り','辞退'];
+  // Build position-to-dept map for dept filtering
+  var posDeptMap = {};
+  STATE.positions.forEach(function(p){ posDeptMap[p.name] = p.dept || '未分類'; });
   var filtered = STATE.candidates.filter(function(c) {
     if (candFilter.search && !c.name.toLowerCase().includes(candFilter.search.toLowerCase()) && !(c.position||'').toLowerCase().includes(candFilter.search.toLowerCase())) return false;
     if (candFilter.position && candFilter.position !== 'all' && c.position !== candFilter.position) return false;
+    // Dept filter: match candidate's position dept
+    if (candFilter.dept && candFilter.dept !== 'all') {
+      var cDept = posDeptMap[c.position] || '未分類';
+      if (cDept !== candFilter.dept) return false;
+    }
     if (candFilter.dateRange !== 'all') {
       var created = new Date(c.createdAt);
       if (candFilter.dateRange === 'custom') {
@@ -910,8 +934,18 @@ function renderCandidates() {
     html+='<span style="color:var(--sub);font-size:12px">〜</span>';
     html+='<input type="date" value="'+esc(candFilter.toDate)+'" onchange="candFilter.toDate=this.value;render()" style="font-size:12px">';
   }
+  // Dept dropdown (synced with position tab)
+  var candDepts = []; STATE.positions.forEach(function(p){if(p.dept && !candDepts.includes(p.dept)) candDepts.push(p.dept);}); candDepts.sort();
+  html += '<label>部門:</label><select onchange="candFilter.dept=this.value;posFilter.dept=this.value;render()"><option value="all">全て</option>';
+  candDepts.forEach(function(d){html+='<option value="'+esc(d)+'" '+(candFilter.dept===d?'selected':'')+'>'+esc(d)+'</option>';});
+  html += '</select>';
+  // Position dropdown - filter by dept if set
+  var filteredPositions = positions;
+  if (candFilter.dept && candFilter.dept !== 'all') {
+    filteredPositions = positions.filter(function(pn){ return posDeptMap[pn] === candFilter.dept; });
+  }
   html += '<label>ポジション:</label><select onchange="candFilter.position=this.value;render()"><option value="all">全て</option>';
-  positions.forEach(function(p){html+='<option value="'+esc(p)+'" '+(candFilter.position===p?'selected':'')+'>'+esc(p)+'</option>';});
+  filteredPositions.forEach(function(p){html+='<option value="'+esc(p)+'" '+(candFilter.position===p?'selected':'')+'>'+esc(p)+'</option>';});
   html += '</select><input type="text" placeholder="名前/ポジション検索..." value="'+esc(candFilter.search)+'" oninput="candFilter.search=this.value;render()" style="flex:1;max-width:200px">';
   // View toggle + add button
   html += '<div class="view-toggle"><button class="'+(candView==='status'?'active':'')+'" onclick="candView=\'status\';render()">ステータス別</button><button class="'+(candView==='position'?'active':'')+'" onclick="candView=\'position\';render()">ポジション別</button></div>';
@@ -1004,10 +1038,20 @@ function getWeekDates(wk) {
 function renderFunnel() {
   var weekKey = getWeekKey(funnelWeekOffset), weekDates = getWeekDates(weekKey);
   var weekData = STATE.weekly[weekKey] || {};
-  var openPos = STATE.positions.filter(function(p){return p.status!=='CLOSE'}).sort(function(a,b){var po={HIGH:0,MID:1,LOW:2};return (po[a.priority]||9)-(po[b.priority]||9);});
+  var funnelDept = posFilter.dept || 'all';
+  var openPos = STATE.positions.filter(function(p){
+    if (p.status==='CLOSE') return false;
+    if (funnelDept !== 'all' && (p.dept||'未分類') !== funnelDept) return false;
+    return true;
+  }).sort(function(a,b){var po={HIGH:0,MID:1,LOW:2};return (po[a.priority]||9)-(po[b.priority]||9);});
   var totals = {}; FUNNEL_FIELDS.forEach(function(f){totals[f]=0;});
-  Object.values(weekData).forEach(function(row){FUNNEL_FIELDS.forEach(function(f){totals[f]+=(row[f]||0);});});
-  var html = '<div class="funnel-header"><h3>週次採用ファネル</h3><div class="week-nav"><button onclick="funnelWeekOffset--;render()">◀</button><div class="week-label">'+weekKey+'<br><span style="font-size:11px;color:var(--sub)">'+weekDates+'</span></div><button onclick="funnelWeekOffset++;render()">▶</button><button onclick="funnelWeekOffset=0;render()" style="margin-left:8px;font-size:11px">今週</button></div><div>';
+  openPos.forEach(function(p){ var row = weekData[p.name]||{}; FUNNEL_FIELDS.forEach(function(f){totals[f]+=(row[f]||0);}); });
+  // Dept dropdown
+  var fDepts = []; STATE.positions.forEach(function(p){if(p.dept && !fDepts.includes(p.dept)) fDepts.push(p.dept);}); fDepts.sort();
+  var html = '<div class="funnel-header"><h3>週次採用ファネル</h3><div class="week-nav"><button onclick="funnelWeekOffset--;render()">◀</button><div class="week-label">'+weekKey+'<br><span style="font-size:11px;color:var(--sub)">'+weekDates+'</span></div><button onclick="funnelWeekOffset++;render()">▶</button><button onclick="funnelWeekOffset=0;render()" style="margin-left:8px;font-size:11px">今週</button></div><div style="display:flex;align-items:center;gap:8px">';
+  html += '<label style="font-size:12px">部門:</label><select onchange="posFilter.dept=this.value;candFilter.dept=this.value;render()" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px"><option value="all">全て</option>';
+  fDepts.forEach(function(d){html+='<option value="'+esc(d)+'" '+(funnelDept===d?'selected':'')+'>'+esc(d)+'</option>';});
+  html += '</select>';
   html += funnelEditing ? '<button class="add-btn" onclick="saveFunnelData(\''+weekKey+'\')">💾 保存</button><button class="btn-secondary" style="margin-left:4px" onclick="funnelEditing=false;render()">キャンセル</button>' : '<button class="add-btn" onclick="funnelEditing=true;render()">✏️ 編集</button>';
   html += '</div></div><table class="funnel-table"><thead><tr><th>ポジション</th>';
   FUNNEL_FIELDS.forEach(function(f){html+='<th>'+esc(f)+'</th>';});
