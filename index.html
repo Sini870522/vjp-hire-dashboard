@@ -741,7 +741,9 @@ function renderPositions() {
   if (!filtered.length) { html += '<div style="text-align:center;padding:40px;color:var(--sub)">該当なし</div>'; document.getElementById('content').innerHTML = html; return; }
   // Business division mapping
   var RETAIL_DEPTS = ['店舗運営','店铺运营','新店拓展','渠道开拓','渠道開拓','Retail','Store','店舗','店铺'];
+  var HR_DEPTS = ['人事','总务','総務','HR','HRGA','人事総務','人事/总务','General Affairs','Admin'];
   function isRetail(dept){ return RETAIL_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
+  function isHR(dept){ return HR_DEPTS.some(function(r){ return dept.toLowerCase().indexOf(r.toLowerCase())>=0; }); }
   // Build pipeline map: position name -> candidates by stage (exclude 見送り/辞退)
   // Use fuzzy matching: candidate position may be a substring of position name or vice versa
   var pipeMap = {};
@@ -796,19 +798,23 @@ function renderPositions() {
     h += '</tbody></table>';
     return h;
   }
-  var retailDepts=[], brandDepts=[];
+  var retailDepts=[], brandDepts=[], hrDepts=[];
   deptOrder.forEach(function(dept){
-    if(isRetail(dept)) retailDepts.push(dept); else brandDepts.push(dept);
+    if(isRetail(dept)) retailDepts.push(dept);
+    else if(isHR(dept)) hrDepts.push(dept);
+    else brandDepts.push(dept);
   });
-  var retailTotal=0, brandTotal=0, retailOpen=0, brandOpen=0;
-  retailDepts.forEach(function(d){retailTotal+=deptMap[d].length; deptMap[d].forEach(function(p){if(p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載')retailOpen++;});});
-  brandDepts.forEach(function(d){brandTotal+=deptMap[d].length; deptMap[d].forEach(function(p){if(p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載')brandOpen++;});});
+  function countDept(arr){ var t=0,o=0; arr.forEach(function(d){t+=deptMap[d].length; deptMap[d].forEach(function(p){if(p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載')o++;});}); return {total:t,open:o}; }
+  var rc=countDept(retailDepts), bc=countDept(brandDepts), hc=countDept(hrDepts);
   html += '<div class="biz-columns">';
-  html += '<div class="biz-block"><div class="biz-block-header"><h2>Retail Business</h2><span class="biz-count">'+retailTotal+'件</span>'+(retailOpen?'<span class="dept-open">'+retailOpen+' open</span>':'')+'</div>';
+  html += '<div class="biz-block"><div class="biz-block-header"><h2>Retail Business</h2><span class="biz-count">'+rc.total+'件</span>'+(rc.open?'<span class="dept-open">'+rc.open+' open</span>':'')+'</div>';
   html += renderBizTable(retailDepts);
   html += '</div>';
-  html += '<div class="biz-block"><div class="biz-block-header"><h2>Brand 推進</h2><span class="biz-count">'+brandTotal+'件</span>'+(brandOpen?'<span class="dept-open">'+brandOpen+' open</span>':'')+'</div>';
+  html += '<div class="biz-block"><div class="biz-block-header"><h2>Brand 推進</h2><span class="biz-count">'+bc.total+'件</span>'+(bc.open?'<span class="dept-open">'+bc.open+' open</span>':'')+'</div>';
   html += renderBizTable(brandDepts);
+  html += '</div>';
+  html += '<div class="biz-block"><div class="biz-block-header"><h2>人事総務</h2><span class="biz-count">'+hc.total+'件</span>'+(hc.open?'<span class="dept-open">'+hc.open+' open</span>':'')+'</div>';
+  html += renderBizTable(hrDepts);
   html += '</div></div>';
   document.getElementById('content').innerHTML = html;
 }
