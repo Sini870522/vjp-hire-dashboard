@@ -130,6 +130,22 @@ tr:last-child td{border-bottom:none}
 .toggle .slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .toggle input:checked+.slider{background:var(--accent)}
 .toggle input:checked+.slider:before{transform:translateX(16px)}
+.view-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.view-toggle button{padding:6px 16px;font-size:12px;border:none;background:#fff;color:var(--sub);cursor:pointer;font-family:var(--font);font-weight:500;transition:all .2s}
+.view-toggle button.active{background:var(--accent);color:#fff}
+.view-toggle button:not(:last-child){border-right:1px solid var(--border)}
+.stage-summary{display:flex;gap:6px;flex-wrap:wrap;padding:12px 0}
+.stage-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--accent-light);color:var(--accent)}
+.stage-pill b{font-size:14px}
+.stage-pill.zero{opacity:.4}
+.pos-group{margin-bottom:16px}
+.pos-group-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent-light);border-radius:10px;margin-bottom:8px;cursor:pointer}
+.pos-group-header:hover{background:#e4dfd9}
+.pos-group-header h4{font-size:13px;font-weight:600;margin:0;flex:1}
+.pos-group-header .pos-total{font-size:12px;color:var(--accent);font-weight:700}
+.pos-stages{display:flex;gap:4px;flex-wrap:wrap}
+.pos-stage-tag{font-size:11px;padding:2px 8px;border-radius:12px;background:#fff;border:1px solid var(--border);color:var(--text)}
+.pos-stage-tag b{color:var(--accent);margin-left:2px}
 .pipe-count{font-weight:700;color:var(--accent);cursor:pointer;padding:2px 8px;border-radius:12px;background:var(--accent-light);font-size:12px}
 .pipe-count:hover{background:#e4dfd9}
 .pipe-detail{position:absolute;z-index:10;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);padding:6px 0;margin-top:4px;min-width:140px}
@@ -472,6 +488,7 @@ let STATE = null;
 let currentTab = 'positions';
 let posFilter = {status:'all',priority:'all',dept:'all',search:'',showClosed:false};
 let candFilter = {dateRange:'year',search:'',position:'',fromDate:'',toDate:''};
+let candView = 'status'; // 'status' or 'position'
 let funnelWeekOffset = 0;
 let funnelEditing = false;
 
@@ -772,8 +789,7 @@ function renderPositions() {
     var h = '<table><thead><tr><th>ポジション名</th><th>ステータス</th><th>優先度</th><th>Pipeline</th><th>年収</th><th>人数</th><th>チャネル</th><th>メモ</th><th>更新日</th><th></th></tr></thead><tbody>';
     deptList.forEach(function(dept){
       var items = deptMap[dept].slice().sort(function(a,b){ return (statusOrder[a.status]||9) - (statusOrder[b.status]||9) || (priOrder[a.priority]||9) - (priOrder[b.priority]||9); });
-      var openCount = items.filter(function(p){return p.status==='OPEN'||p.status==='確認中'||p.status==='未掲載'}).length;
-      h += '<tr class="dept-divider"><td colspan="10"><span class="dept-divider-name">'+esc(dept)+'</span><span class="dept-count">'+items.length+'</span>'+(openCount?'<span class="dept-open">'+openCount+' open</span>':'')+'</td></tr>';
+      h += '<tr class="dept-divider"><td colspan="10"><span class="dept-divider-name">'+esc(dept)+'</span></td></tr>';
       items.forEach(function(p){
         var sc=p.status==='OPEN'?'open':p.status==='CLOSE'?'close':(p.status==='確認中'||p.status==='未掲載')?'hold':'unpub';
         var pc=p.priority==='HIGH'?'high':p.priority==='MID'?'mid':'low';
@@ -821,9 +837,10 @@ function renderPositions() {
 
 function renderCandidates() {
   var now = new Date();
+  var STAGES = ['書類選考','casual面談','一次面接','二次面接','内定承諾','已入社','見送り','辞退'];
   var filtered = STATE.candidates.filter(function(c) {
     if (candFilter.search && !c.name.toLowerCase().includes(candFilter.search.toLowerCase()) && !(c.position||'').toLowerCase().includes(candFilter.search.toLowerCase())) return false;
-    if (candFilter.position !== 'all' && c.position !== candFilter.position) return false;
+    if (candFilter.position && candFilter.position !== 'all' && c.position !== candFilter.position) return false;
     if (candFilter.dateRange !== 'all') {
       var created = new Date(c.createdAt);
       if (candFilter.dateRange === 'custom') {
@@ -839,8 +856,16 @@ function renderCandidates() {
     }
     return true;
   });
+  // Stage summary counts
+  var stageCounts = {};
+  STAGES.forEach(function(s){ stageCounts[s] = 0; });
+  filtered.forEach(function(c){
+    var st = c.status || '';
+    if (stageCounts.hasOwnProperty(st)) stageCounts[st]++;
+    else { stageCounts[st] = 1; STAGES.push(st); }
+  });
   var positions = []; STATE.candidates.forEach(function(c){if(c.position && !positions.includes(c.position)) positions.push(c.position);}); positions.sort();
-  var columns = [{key:'選考中',statuses:['書類選考','一次面接','二次面接']},{key:'内定・入社',statuses:['内定承諾','已入社']},{key:'見送り・辞退',statuses:['見送り','辞退']}];
+  // Filter bar
   var html = '<div class="filter-bar"><label>期間:</label>';
   [{k:'all',l:'全期間'},{k:'year',l:'今年'},{k:'m1',l:'1ヶ月'},{k:'m3',l:'3ヶ月'},{k:'m6',l:'半年'},{k:'custom',l:'カスタム'}].forEach(function(f){
     html+='<button class="btn '+(candFilter.dateRange===f.k?'active':'')+'" onclick="candFilter.dateRange=\''+f.k+'\';render()">'+f.l+'</button>';
@@ -852,27 +877,75 @@ function renderCandidates() {
   }
   html += '<label>ポジション:</label><select onchange="candFilter.position=this.value;render()"><option value="all">全て</option>';
   positions.forEach(function(p){html+='<option value="'+esc(p)+'" '+(candFilter.position===p?'selected':'')+'>'+esc(p)+'</option>';});
-  html += '</select><input type="text" placeholder="名前/ポジション検索..." value="'+esc(candFilter.search)+'" oninput="candFilter.search=this.value;render()" style="flex:1;max-width:200px"><button class="add-btn" onclick="showAddCandidate()">＋ 新規候補者</button></div><div class="kanban">';
-  columns.forEach(function(col){
-    var items = filtered.filter(function(c){
-      var isRejected = (c.judgment||'').includes('見送り') || c.status==='見送り' || c.status==='辞退';
-      if (col.key==='見送り・辞退') return isRejected;
-      if (col.key==='内定・入社') return !isRejected && col.statuses.includes(c.status);
-      if (col.key==='選考中') return !isRejected && !['内定承諾','已入社'].includes(c.status) && c.status;
-      return col.statuses.includes(c.status);
-    });
-    // Sort newest first
-    items.sort(function(a,b){ return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
-    html+='<div class="kanban-col"><h3>'+col.key+' <span class="cnt">'+items.length+'</span></h3>';
-    if (!items.length) html+='<div style="text-align:center;color:var(--sub);font-size:12px;padding:20px">なし</div>';
-    items.forEach(function(c){
-      var days=Math.floor((now-new Date(c.createdAt))/86400000);
-      var isStale=days>90&&!['已入社','内定承諾'].includes(c.status);
-      html+='<div class="cand-card '+(isStale?'stale':'')+'" onclick="showCandidateDetail(\''+c.id+'\')"><div class="name">'+esc(c.name)+'</div><div class="pos">'+esc(c.position||'未設定')+' ・ '+esc(c.status||'')+'</div><div class="judgment">'+esc(c.judgment||'')+'</div><div class="date">'+c.createdAt+' ('+days+'日前)</div></div>';
-    });
-    html+='</div>';
+  html += '</select><input type="text" placeholder="名前/ポジション検索..." value="'+esc(candFilter.search)+'" oninput="candFilter.search=this.value;render()" style="flex:1;max-width:200px">';
+  // View toggle + add button
+  html += '<div class="view-toggle"><button class="'+(candView==='status'?'active':'')+'" onclick="candView=\'status\';render()">ステータス別</button><button class="'+(candView==='position'?'active':'')+'" onclick="candView=\'position\';render()">ポジション別</button></div>';
+  html += '<button class="add-btn" onclick="showAddCandidate()">＋ 新規候補者</button></div>';
+  // Stage summary bar
+  html += '<div class="stage-summary">';
+  html += '<span class="stage-pill"><b>'+filtered.length+'</b> 合計</span>';
+  STAGES.forEach(function(s){
+    var n = stageCounts[s] || 0;
+    html += '<span class="stage-pill'+(n===0?' zero':'')+'"><b>'+n+'</b> '+esc(s)+'</span>';
   });
   html += '</div>';
+  if (candView === 'status') {
+    // === STATUS VIEW (kanban) ===
+    var columns = [{key:'選考中',statuses:['書類選考','一次面接','二次面接']},{key:'内定・入社',statuses:['内定承諾','已入社']},{key:'見送り・辞退',statuses:['見送り','辞退']}];
+    html += '<div class="kanban">';
+    columns.forEach(function(col){
+      var items = filtered.filter(function(c){
+        var isRejected = (c.judgment||'').includes('見送り') || c.status==='見送り' || c.status==='辞退';
+        if (col.key==='見送り・辞退') return isRejected;
+        if (col.key==='内定・入社') return !isRejected && col.statuses.includes(c.status);
+        if (col.key==='選考中') return !isRejected && !['内定承諾','已入社'].includes(c.status) && c.status;
+        return col.statuses.includes(c.status);
+      });
+      items.sort(function(a,b){ return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
+      html+='<div class="kanban-col"><h3>'+col.key+' <span class="cnt">'+items.length+'</span></h3>';
+      if (!items.length) html+='<div style="text-align:center;color:var(--sub);font-size:12px;padding:20px">なし</div>';
+      items.forEach(function(c){
+        var days=Math.floor((now-new Date(c.createdAt))/86400000);
+        var isStale=days>90&&!['已入社','内定承諾'].includes(c.status);
+        html+='<div class="cand-card '+(isStale?'stale':'')+'" onclick="showCandidateDetail(\''+c.id+'\')"><div class="name">'+esc(c.name)+'</div><div class="pos">'+esc(c.position||'未設定')+' ・ '+esc(c.status||'')+'</div><div class="judgment">'+esc(c.judgment||'')+'</div><div class="date">'+c.createdAt+' ('+days+'日前)</div></div>';
+      });
+      html+='</div>';
+    });
+    html += '</div>';
+  } else {
+    // === POSITION VIEW ===
+    var posMap = {};
+    filtered.forEach(function(c){
+      var pos = c.position || '未設定';
+      if (!posMap[pos]) posMap[pos] = [];
+      posMap[pos].push(c);
+    });
+    var posKeys = Object.keys(posMap).sort(function(a,b){ return posMap[b].length - posMap[a].length; });
+    posKeys.forEach(function(pos){
+      var cands = posMap[pos];
+      // Count stages for this position
+      var posStages = {};
+      cands.forEach(function(c){ var s=c.status||'未設定'; posStages[s]=(posStages[s]||0)+1; });
+      html += '<div class="pos-group"><div class="pos-group-header" onclick="candFilter.position=\''+esc(pos).replace(/'/g,"\\'")+'\';candView=\'status\';render()">';
+      html += '<h4>'+esc(pos)+'</h4><div class="pos-stages">';
+      STAGES.forEach(function(s){
+        if (posStages[s]) html += '<span class="pos-stage-tag">'+esc(s)+' <b>'+posStages[s]+'</b></span>';
+      });
+      // any stages not in STAGES
+      Object.keys(posStages).forEach(function(s){ if (STAGES.indexOf(s)<0 && posStages[s]) html += '<span class="pos-stage-tag">'+esc(s)+' <b>'+posStages[s]+'</b></span>'; });
+      html += '</div><span class="pos-total">'+cands.length+'名</span></div>';
+      // Candidate cards under this position
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;padding:0 8px">';
+      cands.sort(function(a,b){ var so={書類選考:1,casual面談:2,一次面接:3,二次面接:4,内定承諾:5,已入社:6,見送り:7,辞退:8}; return (so[a.status]||9)-(so[b.status]||9); });
+      cands.forEach(function(c){
+        var days=Math.floor((now-new Date(c.createdAt))/86400000);
+        var isStale=days>90&&!['已入社','内定承諾'].includes(c.status);
+        html+='<div class="cand-card '+(isStale?'stale':'')+'" onclick="showCandidateDetail(\''+c.id+'\')"><div class="name">'+esc(c.name)+'</div><div class="pos">'+esc(c.status||'')+' ・ '+esc(c.judgment||'')+'</div><div class="date">'+c.createdAt+' ('+days+'日前)</div></div>';
+      });
+      html += '</div></div>';
+    });
+    if (!posKeys.length) html += '<div style="text-align:center;color:var(--sub);padding:40px">該当候補者なし</div>';
+  }
   document.getElementById('content').innerHTML = html;
 }
 
